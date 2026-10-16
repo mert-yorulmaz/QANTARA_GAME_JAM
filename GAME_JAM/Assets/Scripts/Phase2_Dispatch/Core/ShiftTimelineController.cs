@@ -152,6 +152,7 @@ namespace ZeroHour.Phase2.Core
                     finalDesc,
                     finalCivilians,
                     evt.workDuration,
+                    false,
                     finalUnits.ToArray()
                 );
 
@@ -280,7 +281,7 @@ namespace ZeroHour.Phase2.Core
             {
                 timeOffsetSeconds = 120f,
                 targetBuildingId = "BLD_METRO_PLAZA",
-                incidentType = IncidentType.GasExplosionFire,
+                incidentType = IncidentType.GasLeakExplosion,
                 severity = IncidentSeverity.Critical,
                 eventTitle = "GAS ACCELERANT EXPLOSION",
                 eventDescription = "Severed gas line ruptured! Heavy fire and wounded casualties.",

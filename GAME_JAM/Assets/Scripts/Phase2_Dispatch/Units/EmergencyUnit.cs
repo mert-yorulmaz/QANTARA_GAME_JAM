@@ -15,7 +15,6 @@ namespace ZeroHour.Phase2.Units
 
         [Header("Helicopter Specific")]
         [SerializeField] private float flightAltitude = 5f;
-        [SerializeField] private float verticalTakeoffSpeed = 3f;
 
         [Header("Visual & Siren Flasher")]
         [SerializeField] private GameObject sirenLights;
