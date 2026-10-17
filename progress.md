@@ -172,3 +172,63 @@
 3. Faz 1 ile birleştirme ve Windows Standalone Build.
 4. Beyan tablolarını (üstteki taslak dahil) gözden geçirip README ile birlikte güncelle.
 5. Public repo, build linki, tanıtım videosu, commit ID'nin teslim formuna girilmesi.
+
+---
+---
+
+# 🔄 GÜNCELLEME 2 — 18 Ekim 2026, gece (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 2"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. Üstteki "GÜNCELLEME BÖLÜMÜ"ndeki bazı "doğrulanmadı" maddeleri burada Play Mode testiyle netleşti; çelişki varsa **bu bölüm geçerlidir**.
+> Çalışma `claude/faz2-ui` branch'inde yapıldı (`main`'e birleştirilmedi, push edilmedi). Kod commit'i: `6a4ef00`.
+
+## 🔍 Play Mode Testinde Ortaya Çıkanlar (Önceki Varsayımları Düzeltir)
+
+| Konu | Gerçek durum (test edildi) |
+| :--- | :--- |
+| Sahnede kurulu sistemler | Kaydedilmiş sahnede **sadece** `AStarMovementTester` vardı. `DispatchManager`, `CityStatsManager`, `BuildingNode`, `UnitStation`, `DispatchHUD`, `SettingsUI`, `TacticalCameraController`, `IncidentPopupUI` **sahnede yoktu** (script olarak var, sahneye eklenmemiş). |
+| Eski HUD | `Canvas` altındaki `anel_Units` / `anel_Units (1)` sadece görseldi, sayı ve script yoktu. |
+| Canvas çözünürlüğü | Sahnedeki Canvas Scaler **1920x1080**'di. Yağız'ın README'si 1280x720 tasarım + 2x (2560x1440) export diyor. Yeni UI 1920x1080 referansta, PNG'ler 0.75 ölçekle doğal boyutunda. Görünüm iki referansta da aynıdır. |
+| Kameralar | İki `MainCamera` etiketli kamera aynı derinlikte render ediyordu. Oyunu gösteren (post-processing'li gece görünümü) `Main Camera`. |
+| Konvoy mantığı | 10.5 m konvoy, yöne duyarlı radar ve VTOL **sadece** `AStarMovementTester`'da var. `DispatchManager` / `EmergencyUnit` sisteminde yok. Bu yüzden sevk sistemi tester araçlarının üzerine kuruldu. |
+| Eski Input riski | `TacticalCameraController` ve `AStarMovementTester`'daki eski `Input.*` çağrıları New Input System'den **sonra** gelen `try` içindeki yedek dallar. Önce `Keyboard.current` / `Mouse.current` okunuyor. |
+
+## ✅ Bu Güncellemede Tamamlananlar (Play Mode'da Test Edildi)
+
+- [x] **Görev 1: Gelen Çağrı Sistemi.** `IncomingCallController`: ilk çağrı 4 sn, sonra her 10–15 sn'de `call_card_ringing` yanıp söner ve zil çalar. ACCEPT → `call_card_listening` + `call_progress_fill` 3 sn'de dolar, boğuk telsiz sesi çalar → olay rozeti çıkar. DECLINE veya 12 sn cevapsız → `CityStatsManager.OnCallDismissed(5)`. *Test: kabul → dinleme → rozet; ret → 150'den 145'e düştü.*
+- [x] **Görev 2: Harita Olay Rozetleri.** `IncidentMarker`: olay binasının çatısı üstünde, kameraya bakan (billboard), sine dalgasıyla salınan `marker_fire` / `marker_collapse`. Kamera uzaklığına göre ekranda sabit boy. Son 15 sn'de nabız gibi atar, ekip yoldayken soluklaşır. Tıklama New Input System (`Mouse.current`) + raycast ile. *Test: rozet doğru binada çıktı, raycast rozete isabet etti.*
+- [x] **Görev 3: Kaza Dosyası.** `IncidentFileUI`: `incident_file_panel` üstünde CASE no, çağrı saati / hat / kalan süre, URGENT/ROUTINE damgası, olay tipi, adres, etkilenen/yaralı sayısı, notlar. Polaroid'de olay binasının **o anki gerçek fotoğrafı** (RenderTexture). Birim tablosu: mesafe (NEAR/MID/FAR), boştaki araç sayısı, `[-] 0 [+]` (boştakinden fazla seçilemez). DISPATCH (seçim yoksa pasif) ve DISMISS CALL. ESC veya dışarı tıklama dosyayı cezasız kapatır. *Test: seçici, sınırlama, sevk ve ret çalıştı.*
+- [x] **Sevk ve sonuç kuralları** (`IncidentBoard`): Yangın → İtfaiye, Çökme → Ambulans gerekir. Doğru ekip varınca tüm yaralılar kurtarılır. Yanlış ekipte yarısı kaybedilir. 60 sn ekip gönderilmezse hepsi kaybedilir. Dosyada DISMISS → yaralı sayısı kadar kayıp. *Test: dördü de doğru sonuç verdi.*
+- [x] **Top HUD bağlandı**: Yağız'ın `hud_units_panel` / `hud_population_panel` görselleri, canlı `boşta/toplam` sayaçları (1/1, 0/1) ve `150/150` nüfus sayacı (`DispatchHUD`).
+- [x] **Taktik kamera** sahneye eklendi: WASD/oklar ile pan (kameranın baktığı yöne göre), fare tekerleği ile zoom (yükseklik sınırlı), harita sınırları kamera konumuna göre ±160 m.
+- [x] **Tek tık kurulum:** `ZeroHour → 8. Build Call System + Incident File UI (Tek Tık)`. Tekrar çalıştırılabilir, kendi oluşturduğu Canvas'ı yeniden kurar.
+- [x] Konsol: derleme **0 hata, 0 uyarı**.
+
+## 🐞 Test Sırasında Bulunup Düzeltilen Hatalar
+
+- **Ambulans yerine Canvas seçiliyordu:** `AStarMovementTester` ambulansı `Vehicle_Ambulance` adıyla arıyor, sahnedeki ad `Vehicle_Ambulance_separate`. Bulamayınca adında "ambulance" geçen ilk nesneyi (UI yazısı) alıyordu. Düzeltme: UI nesneleri aramadan çıkarıldı, kurulum 4 aracı isimle açıkça bağlıyor.
+- **Konvoy karşılıklı kilitlenmesi:** Farklı yollardan gelip olay yerinde birbirine dönük park eden iki araç, dönüşte birbirini "önümde" görüp sonsuza kadar bekliyordu. Düzeltme: sadece karşılıklı durumda listede önce gelen geçer. Normal 10.5 m takip/fren mantığı değişmedi. *Test: aynı anda iki ayrı olay + tek olaya 4 araç + orijinal A* testi; tüm araçlar üsse döndü.*
+
+## 🧾 Değişen / Eklenen Dosyalar
+
+- **Yeni:** `Scripts/Phase2_Dispatch/Calls/` → `IncidentReport.cs`, `IncidentBoard.cs`, `IncidentMarker.cs`, `IncomingCallController.cs`, `IncidentFileUI.cs`, `ProceduralCallAudio.cs`. `Scripts/Phase2_Dispatch/Editor/CallSystemSceneBuilder.cs`. `Prefabs/Calls/IncidentMarker.prefab` + `IncidentMarker_Unlit.mat`. `06_fonts/DispatchPixelTR SDF.asset`, `06_fonts/IBMPlexSansCondensed-SemiBold SDF.asset` (TMP font assetleri).
+- **Değişen:** `AStarMovementTester.cs` (sevk API'si; hareket/fren hesapları aynı), `DispatchHUD.cs` (DispatchManager yoksa tester'dan sayar), `TacticalCameraController.cs` (yöne göre pan, zoom sınırı), `SampleScene.unity`, 7 UI görselinin import ayarı (Sprite).
+- **Sahnede pasif yapılanlar (silinmedi):** `Main Camera (1)` (fazla kamera) ve eski `Canvas` (anel_Units görselleri). Gerekirse Inspector'dan tekrar açılabilir.
+- **Dokunulmayanlar:** Faz 1, NavMesh fırını, bina materyalleri / emisyonları (sahne diff'iyle doğrulandı: materyal referansları ve emisyon değerleri birebir aynı).
+
+## ⚠️ Doğrulanamayanlar / Açık Riskler
+
+- **Gerçek fare tıklaması:** Rozete raycast ve UI butonlarının bağlantıları doğrulandı, ama Unity editörü odakta olmadığı için gerçek fareyle tıklama test edilemedi. **Play'de rozete ve butonlara bir kez elle tıklayın.**
+- **Ses:** Zil ve telsiz sesi kodla üretiliyor (projede ses dosyası yok). Klipler oluşuyor, ama duraklatılmış test modunda duyulup duyulmadığı doğrulanamadı.
+- **Renkler:** MCP ekran görüntüleri soluk çıktığı için UI renkleri gözle tam doğrulanamadı (PNG'ler opak ve doğru).
+- **`JobTempAlloc` iç uyarısı:** Sadece kareleri elle ilerlettiğim testte görüldü. Normal Play'de çıkıp çıkmadığına bakın.
+- **Araç sayısı:** Sahnede her tipten **1** araç var (HUD 1/1). GDD'deki satın alım menüsü / çoklu araç yok.
+- **Kullanılmayan eski sistem:** `DispatchManager`, `EmergencyUnit`, `UnitStation`, `BuildingNode`, `IncidentPopupUI`, `ShiftTimelineController`, `DispatchTerminalUI`, `ShiftDebriefUI` hâlâ sahnede değil. Vardiya saati (02:00–05:00) ve vardiya sonu karnesi bağlı değil.
+- **Dil:** Yeni UI metinleri İngilizce (Yağız'ın mockup'larıyla aynı). `SettingsUI` dil seçimine bağlı değil.
+
+## 📋 Sıradaki Adımlar
+
+1. Editörde Play → rozete ve butonlara elle tıklayarak test.
+2. `claude/faz2-ui` → `main` birleştirme (`git switch main && git merge claude/faz2-ui`) ve push.
+3. Faz 1 ile birleştirme, vardiya sonu (05:00) ve karne ekranı.
+4. Windows Standalone Build, video, teslim formu (commit ID).

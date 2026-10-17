@@ -52,7 +52,15 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 | **Kaynak Bağlantısı** | [Unity Asset Store - Planes & Choppers](https://assetstore.unity.com/packages/3d/vehicles/air/planes-choppers-polypack-194946) |
 | **Lisans / Kullanım İzni** | Standard Unity Asset Store EULA (Free) |
 | **Kullanım ve Değişiklik** | Çatıda mahsur kalan sivilleri tahliye eden ve uzak yangınlara müdahale eden Arama-Kurtarma Helikopteri (`Rescue Helicopter`) olarak kullanıldı. |
-| **Repoda Bulunmayan Dosyalar** | Yok. Gerekli tüm varlıklar Unity projesinin Assets klasörüne dahil edilmiştir. |
+| **Kaynak ve Sağlayıcı (3)** | DispatchPixelTR (Dogica Pixel'den türetilmiş) ve IBM Plex Sans Condensed fontları |
+| **Kaynak Bağlantısı** | Dogica Pixel / IBM Plex (lisans dosyaları: `Assets/UI/Dispatch_UI_Assets/06_fonts/OFL.txt`, `IBMPlexSans-LICENSE.txt`) |
+| **Lisans / Kullanım İzni** | SIL Open Font License (OFL) — OFL.txt oyunla birlikte dağıtılmalıdır |
+| **Kullanım ve Değişiklik** | HUD, çağrı kartı ve Kaza Dosyası yazıları. Oyun içinde TextMeshPro SDF font assetine dönüştürüldü. |
+| **Kaynak ve Sağlayıcı (4)** | MCP for Unity (`com.coplaydev.unity-mcp` v10.0.0) / Sağlayıcı: CoplayDev |
+| **Kaynak Bağlantısı** | [GitHub - CoplayDev/unity-mcp](https://github.com/CoplayDev/unity-mcp) |
+| **Lisans / Kullanım İzni** | MIT License |
+| **Kullanım ve Değişiklik** | Sadece geliştirme aracı: yapay zeka asistanının Unity editörüne bağlanması için. Oyun koduna ve build'e katkısı yoktur. Değiştirilmedi. |
+| **Repoda Bulunmayan Dosyalar** | Yok. Gerekli tüm varlıklar Unity projesinin Assets klasörüne dahil edilmiştir. MCP paketi `Packages/manifest.json` üzerinden Unity tarafından indirilir. |
 
 ---
 
@@ -63,6 +71,10 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 * **Kullanılan Araç:** Google Antigravity / Gemini 3.8 Flash (High) AI Coding Agent
 * **Kullanım Amacı:** C# oyun sistemlerinin mimari tasarımı, olay/filo simülasyonu algoritmalarının yazımı, derleme hatalarının çözülmesi ve dokümantasyon hazırlanması.
 * **Kullanım Yeri:** `GAME_JAM/Assets/Scripts/Phase2_Dispatch/` altındaki tüm C# backend ve UI scriptleri (`Core/`, `Data/`, `Incidents/`, `Units/`, `UI/`).
+
+* **Kullanılan Araç (2):** Claude Code (Anthropic) — Unity MCP bağlantısı ile
+* **Kullanım Amacı:** Gelen çağrı, harita olay rozetleri ve Kaza Dosyası sistemlerinin kodlanması; sahneye tek tıkla kurulum; mevcut araç konvoyuna sevk API'si eklenmesi ve test sırasında bulunan hataların (ambulans eşleştirme, konvoy kilitlenmesi) düzeltilmesi; Play Mode testleri; `progress.md` ve README güncellemesi.
+* **Kullanım Yeri:** `GAME_JAM/Assets/Scripts/Phase2_Dispatch/Calls/` (tüm dosyalar), `Editor/CallSystemSceneBuilder.cs`; değişiklikler: `Units/AStarMovementTester.cs`, `UI/DispatchHUD.cs`, `Core/TacticalCameraController.cs`, `Assets/Scenes/SampleScene.unity`, `Assets/Prefabs/Calls/`.
 
 ---
 
@@ -81,6 +93,11 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 | **Farenin Sol Tuşu (Sol Tık)** | Haritadaki binalara tıklama & Afet Çağrısı detay panelini açma |
 | **Ekip Butonları (UI)** | İtfaiye, Ambulans, Polis veya Kurtarma Helikopteri sevk etme |
 | **Boşluk / Kapat Butonu** | Açık olan afet bildirim kartını kapatma |
+| **ACCEPT / DECLINE (sol alt çağrı kartı)** | Gelen çağrıyı açma (3 sn dinlenir, haritada olay rozeti çıkar) / reddetme (5 sivil kaybı) |
+| **Haritadaki olay rozetine Sol Tık** | Kaza Dosyasını açma |
+| **Kaza Dosyası `[-]` / `[+]`** | Gönderilecek birim sayısını seçme (Polis, Ambulans, İtfaiye, Helikopter) |
+| **DISPATCH / DISMISS CALL** | Seçili birimleri olay yerine sevk etme / çağrıyı kapatma (yaralılar kaybedilir) |
+| **ESC veya dosya dışına tıklama** | Kaza Dosyasını cezasız kapatma |
 
 ---
 
