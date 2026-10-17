@@ -7,7 +7,7 @@ namespace ZeroHour.Phase2.Editor
 {
     public static class TacticalNightAtmosphere
     {
-        [MenuItem("ZeroHour/🌙 1. Set True 45° Isometric Camera")]
+        [MenuItem("ZeroHour/1. Set True 45 Isometric Camera")]
         public static void SetIsometricCamera()
         {
             Camera cam = Camera.main ?? Object.FindAnyObjectByType<Camera>();
@@ -21,11 +21,11 @@ namespace ZeroHour.Phase2.Editor
                 Undo.RecordObject(cam, "Setup Camera Background");
                 cam.clearFlags = CameraClearFlags.SolidColor;
                 cam.backgroundColor = new Color(0.03f, 0.06f, 0.12f, 1f); // Deep C4I Command Center Navy
-                Debug.Log("<color=cyan>[ZeroHour] Kamera tam 45 derece izometrik açıya getirildi! (Rot: 35, 45, 0 | Pos: -412, 135, -177)</color>");
+                Debug.Log("<color=cyan>[ZeroHour] Kamera tam 45 derece izometrik aciya getirildi! (Rot: 35, 45, 0 | Pos: -412, 135, -177)</color>");
             }
         }
 
-        [MenuItem("ZeroHour/🌑 2. Fix Double Light & Set Moody Night (Karanlık Gece Modu)")]
+        [MenuItem("ZeroHour/2. Fix Double Light and Set Moody Night")]
         public static void ApplyMoodyNightLighting()
         {
             // NOT: Kullanıcının özel binalara (Hastane vb.) verdiği emission ayarlarına KESİNLİKLE DOKUNULMAZ!

@@ -54,6 +54,22 @@ namespace ZeroHour.Phase2.Units
             SetSirenActive(false);
         }
 
+        private UnityEngine.AI.NavMeshAgent navAgent;
+
+        private void Awake()
+        {
+            navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navAgent != null)
+            {
+                navAgent.obstacleAvoidanceType = UnityEngine.AI.ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+                // Avoidance priority: FireEngine = 10, Ambulance = 20, Police = 30, Chopper = 40
+                navAgent.avoidancePriority = Mathf.Clamp(((int)unitType + 1) * 10, 10, 90);
+                navAgent.autoBraking = true;
+                navAgent.acceleration = 16f;
+                navAgent.angularSpeed = 240f;
+            }
+        }
+
         public bool Dispatch(BuildingNode building, float workDuration)
         {
             if (currentState != UnitState.IdleAtBase)
@@ -65,7 +81,21 @@ namespace ZeroHour.Phase2.Units
             targetBuilding = building;
             requiredWorkDuration = Mathf.Max(2f, workDuration / workEfficiencyMultiplier);
             currentWorkTimer = 0f;
-            targetPosition = building.transform.position;
+            targetPosition = building.ParkingPosition;
+
+            bool isHeli = (unitType == UnitType.RescueHelicopter);
+            if (isHeli)
+            {
+                targetPosition = building.RooftopPosition;
+                if (navAgent != null) navAgent.enabled = false;
+            }
+            else if (navAgent != null && navAgent.isOnNavMesh)
+            {
+                navAgent.enabled = true;
+                navAgent.speed = travelSpeed;
+                navAgent.ResetPath();
+                navAgent.SetDestination(targetPosition);
+            }
 
             SetState(UnitState.EnRouteToIncident);
             SetSirenActive(true);
@@ -82,7 +112,22 @@ namespace ZeroHour.Phase2.Units
                 targetBuilding = null;
             }
 
+            StartReturningToBase();
+        }
+
+        private void StartReturningToBase()
+        {
             SetState(UnitState.ReturningToBase);
+            Vector3 basePos = homeStation != null ? homeStation.DispatchPoint : Vector3.zero;
+            bool isHeli = (unitType == UnitType.RescueHelicopter);
+
+            if (!isHeli && navAgent != null && navAgent.isOnNavMesh)
+            {
+                navAgent.enabled = true;
+                navAgent.speed = travelSpeed;
+                navAgent.ResetPath();
+                navAgent.SetDestination(basePos);
+            }
         }
 
         private void Update()
@@ -110,19 +155,30 @@ namespace ZeroHour.Phase2.Units
 
         private void MoveTowards(Vector3 destination, Action onReached)
         {
-            Vector3 finalDest = destination;
             bool isHeli = (unitType == UnitType.RescueHelicopter);
 
+            if (!isHeli && navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+            {
+                // A* Pathfinding via Unity NavMeshAgent along city roads
+                if (!navAgent.pathPending && navAgent.remainingDistance <= navAgent.stoppingDistance + 0.5f)
+                {
+                    if (!navAgent.hasPath || navAgent.velocity.sqrMagnitude < 0.1f)
+                    {
+                        onReached?.Invoke();
+                    }
+                }
+                return;
+            }
+
+            // Aerial flight for helicopter or fallback if no navmesh baked
+            Vector3 finalDest = destination;
             if (isHeli)
             {
-                // Heli maintains flight altitude during transit
                 finalDest.y = flightAltitude;
             }
 
-            // Smooth 2.5D position stepping
             transform.position = Vector3.MoveTowards(transform.position, finalDest, travelSpeed * Time.deltaTime);
 
-            // Face direction of movement in 2.5D horizontal plane
             Vector3 moveDir = (finalDest - transform.position);
             moveDir.y = 0;
             if (moveDir.sqrMagnitude > 0.01f)
@@ -131,7 +187,7 @@ namespace ZeroHour.Phase2.Units
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 12f * Time.deltaTime);
             }
 
-            if (Vector3.Distance(transform.position, finalDest) < 0.25f)
+            if (Vector3.Distance(transform.position, finalDest) < 0.6f)
             {
                 onReached?.Invoke();
             }
@@ -158,7 +214,7 @@ namespace ZeroHour.Phase2.Units
                 targetBuilding = null;
             }
 
-            SetState(UnitState.ReturningToBase);
+            StartReturningToBase();
         }
 
         private void OnArrivalAtHomeStation()
@@ -170,6 +226,11 @@ namespace ZeroHour.Phase2.Units
             {
                 // Touch down on helipad
                 transform.position = homeStation.DispatchPoint;
+            }
+            else if (homeStation != null)
+            {
+                transform.position = homeStation.DispatchPoint;
+                transform.rotation = homeStation.transform.rotation;
             }
         }
 
