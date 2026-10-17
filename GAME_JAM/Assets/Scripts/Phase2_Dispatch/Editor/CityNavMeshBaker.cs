@@ -11,6 +11,11 @@ namespace ZeroHour.Phase2.Editor
         [MenuItem("Tools/ZeroHour/Bake Roads Only NavMesh")]
         public static void BakeNavMesh()
         {
+            // 0. Eski sahne NavMesh'ini tamamen temizle (Çimenlerin ve zeminlerin taranmasını yok et)
+#pragma warning disable 0618
+            UnityEditor.AI.NavMeshBuilder.ClearAllNavMeshes();
+#pragma warning restore 0618
+
             // 1. [City_Roads_Network] ebeveyn objesini bul veya oluştur
             GameObject roadNetworkObj = GameObject.Find("[City_Roads_Network]");
             if (roadNetworkObj == null)
@@ -19,13 +24,30 @@ namespace ZeroHour.Phase2.Editor
                 Undo.RegisterCreatedObjectUndo(roadNetworkObj, "Create City Roads Network");
             }
 
-            // 2. Sahnede dağınık duran tüm yol parçalarını (Road ...) bul ve bu ebeveynin içine topla
+            // [City_Roads_Network] içinde yanlışlıkla çimen/bina kalmışsa onları dışarı çıkar
+            Transform[] currentChildren = roadNetworkObj.GetComponentsInChildren<Transform>(true);
+            foreach (var child in currentChildren)
+            {
+                if (child == null || child.gameObject == roadNetworkObj) continue;
+                string cn = child.name.ToLower();
+                if (cn.Contains("grass") || cn.Contains("nature") || cn.Contains("bush") || cn.Contains("tree") || cn.Contains("floor") || cn.Contains("building") || cn.Contains("house"))
+                {
+                    Undo.SetTransformParent(child, null, "Unparent Non-Road Object");
+                }
+            }
+
+            // 2. Sahnede dağınık duran tüm yol parçalarını bul ve [City_Roads_Network] altına topla
             GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
             int roadCount = 0;
 
             foreach (var go in allObjects)
             {
-                if (go.name.StartsWith("Road ") || go.name.Contains("Road_") || go.name.Contains("Road Corner") || go.name.Contains("Road Intersection") || go.name.Contains("Road Lane"))
+                string n = go.name.ToLower();
+                // Sadece gerçek asfalt/yol parçaları
+                bool isRoad = (n.StartsWith("road ") || n.Contains("road_") || n.Contains("road corner") || n.Contains("road intersection") || n.Contains("road lane") || n.Contains("road split line") || n.Contains("road t_intersection")) &&
+                              !n.Contains("grass") && !n.Contains("nature") && !n.Contains("floor");
+
+                if (isRoad)
                 {
                     if (go.transform.parent != roadNetworkObj.transform)
                     {
@@ -33,9 +55,18 @@ namespace ZeroHour.Phase2.Editor
                     }
                     roadCount++;
                 }
+                else if (n.Contains("grass") || n.Contains("house floor") || n.Contains("nature") || n.Contains("terrain"))
+                {
+                    // Çimen, bahçe ve doğa zeminlerine NavMeshModifier ekleyip Not Walkable & Ignore yapıyoruz
+                    NavMeshModifier mod = go.GetComponent<NavMeshModifier>();
+                    if (mod == null) mod = Undo.AddComponent<NavMeshModifier>(go);
+                    mod.overrideArea = true;
+                    mod.area = 1; // Not Walkable
+                    mod.ignoreFromBuild = true;
+                }
             }
 
-            // 3. NavMeshSurface'i doğrudan sadece yolları toplayacak şekilde yapılandır (CollectObjects.Children)
+            // 3. NavMeshSurface'i SADECE yolları toplayacak şekilde yapılandır (CollectObjects.Children)
             NavMeshSurface surface = roadNetworkObj.GetComponent<NavMeshSurface>();
             if (surface == null)
             {
@@ -49,9 +80,10 @@ namespace ZeroHour.Phase2.Editor
             // 4. Sadece yolları fırınla
             surface.BuildNavMesh();
             EditorUtility.SetDirty(surface);
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
             Selection.activeGameObject = roadNetworkObj;
 
-            Debug.Log($"<color=cyan>[ZeroHour] 🛣️ Haritadaki {roadCount} adet yol parçası '[City_Roads_Network]' altında toplandı ve SADECE YOLLAR NavMesh olarak fırınlandı! Araçlar artık asfalttan asla çıkamaz.</color>");
+            Debug.Log($"<color=cyan>[ZeroHour] 🛣️ Haritadaki {roadCount} adet yol parçası '[City_Roads_Network]' altında toplandı. Eski sahne NavMesh'i ve çimenler temizlendi, SADECE ASFALT YOLLAR fırınlandı! Araçlar artık asfalttan asla çıkamaz.</color>");
         }
 
         [MenuItem("ZeroHour/Setup Parked Cars As NavMesh Obstacles")]
