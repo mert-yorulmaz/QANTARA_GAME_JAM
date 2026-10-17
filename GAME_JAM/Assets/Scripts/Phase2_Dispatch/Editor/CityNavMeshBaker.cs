@@ -91,5 +91,67 @@ namespace ZeroHour.Phase2.Editor
 
             Debug.Log($"<color=cyan>[ZeroHour] Şehirdeki {obstacleCount} adet araca NavMeshObstacle (Carving) eklendi!</color>");
         }
+
+        [MenuItem("ZeroHour/Carve All Buildings As Solid Obstacles")]
+        public static void CarveAllBuildingsAsObstacles()
+        {
+            GameObject[] allObjects = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            int bldCount = 0;
+
+            foreach (var go in allObjects)
+            {
+                string name = go.name.ToLower();
+                // Bütün konut, dükkan, stadyum ve binaları bul
+                if (name.StartsWith("building_") || name.Contains("house_") || name.Contains("shop") || name.Contains("stadium") || name.Contains("pizza") || name.Contains("bakery"))
+                {
+                    NavMeshObstacle obstacle = go.GetComponent<NavMeshObstacle>();
+                    if (obstacle == null)
+                    {
+                        obstacle = Undo.AddComponent<NavMeshObstacle>(go);
+                    }
+
+                    obstacle.carving = true;
+                    obstacle.carveOnlyStationary = true;
+                    obstacle.shape = NavMeshObstacleShape.Box;
+
+                    Renderer rend = go.GetComponentInChildren<Renderer>();
+                    if (rend != null)
+                    {
+                        obstacle.center = go.transform.InverseTransformPoint(rend.bounds.center);
+                        obstacle.size = rend.bounds.size;
+                    }
+
+                    EditorUtility.SetDirty(go);
+                    bldCount++;
+                }
+            }
+
+            Debug.Log($"<color=cyan>[ZeroHour] 🏢 Şehirdeki {bldCount} adet binaya NavMeshObstacle (Carving) eklendi! Araçlar artık binaların içinden geçemez.</color>");
+        }
+
+        [MenuItem("ZeroHour/6. Setup A Star Movement Tester in Scene")]
+        public static void SetupAStarMovementTester()
+        {
+            // Önce tüm binaları katı duvar yap
+            CarveAllBuildingsAsObstacles();
+
+            GameObject testerObj = GameObject.Find("[ZeroHour_AStarTester]");
+            if (testerObj == null)
+            {
+                testerObj = new GameObject("[ZeroHour_AStarTester]");
+                Undo.RegisterCreatedObjectUndo(testerObj, "Create A* Tester");
+            }
+
+            ZeroHour.Phase2.Units.AStarMovementTester tester = testerObj.GetComponent<ZeroHour.Phase2.Units.AStarMovementTester>();
+            if (tester == null)
+            {
+                tester = Undo.AddComponent<ZeroHour.Phase2.Units.AStarMovementTester>(testerObj);
+            }
+
+            tester.AutoAssignFourUnits();
+            tester.InitializeVehicles();
+            Selection.activeGameObject = testerObj;
+            Debug.Log("<color=green>[ZeroHour] 🚀 A* Movement Tester güncellendi! Binalar katı duvar yapıldı. 4 araç (HelicopterV2, Bus, Ambulance, Police) bağlandı!</color>");
+        }
     }
 }
