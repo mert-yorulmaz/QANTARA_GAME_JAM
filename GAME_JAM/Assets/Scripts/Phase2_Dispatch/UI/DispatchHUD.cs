@@ -53,6 +53,8 @@ namespace ZeroHour.Phase2.UI
 
         private void Start()
         {
+            // OnEnable, yöneticilerin Awake'inden önce çalışmış olabilir; Start'ta tekrar abone ol
+            SubscribeEvents();
             RefreshCityStats();
             RefreshFleetDock();
         }
@@ -77,6 +79,12 @@ namespace ZeroHour.Phase2.UI
                 DispatchManager.Instance.OnUnitDispatched -= HandleUnitDispatched;
                 DispatchManager.Instance.OnUnitDispatched += HandleUnitDispatched;
             }
+
+            if (AStarMovementTester.Instance != null)
+            {
+                AStarMovementTester.Instance.OnFleetChanged -= RefreshFleetDock;
+                AStarMovementTester.Instance.OnFleetChanged += RefreshFleetDock;
+            }
         }
 
         private void UnsubscribeEvents()
@@ -90,6 +98,11 @@ namespace ZeroHour.Phase2.UI
             {
                 DispatchManager.Instance.OnUnitStateChanged -= HandleUnitChanged;
                 DispatchManager.Instance.OnUnitDispatched -= HandleUnitDispatched;
+            }
+
+            if (AStarMovementTester.Instance != null)
+            {
+                AStarMovementTester.Instance.OnFleetChanged -= RefreshFleetDock;
             }
         }
 
@@ -142,7 +155,7 @@ namespace ZeroHour.Phase2.UI
         /// </summary>
         public void RefreshFleetDock()
         {
-            if (DispatchManager.Instance == null) return;
+            if (DispatchManager.Instance == null && AStarMovementTester.Instance == null) return;
 
             UpdateUnitText(policeCountText, UnitType.PoliceCruiser);
             UpdateUnitText(ambulanceCountText, UnitType.Ambulance);
@@ -154,9 +167,20 @@ namespace ZeroHour.Phase2.UI
         {
             if (targetText == null) return;
 
-            int idle = DispatchManager.Instance.GetIdleCount(type);
-            int total = DispatchManager.Instance.GetTotalCount(type);
-            int active = DispatchManager.Instance.GetActiveCount(type);
+            int idle, total, active;
+            if (DispatchManager.Instance != null)
+            {
+                idle = DispatchManager.Instance.GetIdleCount(type);
+                total = DispatchManager.Instance.GetTotalCount(type);
+                active = DispatchManager.Instance.GetActiveCount(type);
+            }
+            else
+            {
+                // DispatchManager sahnede yoksa sahnedeki gerçek konvoy araçlarından say
+                idle = AStarMovementTester.Instance.GetAvailableCount(type);
+                total = AStarMovementTester.Instance.GetTotalCount(type);
+                active = total - idle;
+            }
 
             switch (countDisplayMode)
             {

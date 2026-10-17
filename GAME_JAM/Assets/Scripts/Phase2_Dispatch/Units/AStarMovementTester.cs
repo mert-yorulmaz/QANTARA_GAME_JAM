@@ -3,11 +3,23 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using ZeroHour.Phase2.Data;
 
 namespace ZeroHour.Phase2.Units
 {
     public class AStarMovementTester : MonoBehaviour
     {
+        public static AStarMovementTester Instance { get; private set; }
+
+        /// <summary>Bir aracın görev durumu değiştiğinde (sevk edildi / üsse döndü) tetiklenir.</summary>
+        public event Action OnFleetChanged;
+
+        /// <summary>Sevk edilen bir araç olay yerine ulaştığında tetiklenir (birim tipi, sevk hedefi).</summary>
+        public event Action<UnitType, Vector3> OnVehicleArrived;
+
+        [Header("Debug Paneli (Sol üst OnGUI + Space kısayolu)")]
+        [SerializeField] private bool showDebugPanel = true;
+
         [Header("Test Target Position")]
         [SerializeField] private Vector3 targetPosition = new Vector3(-155.0499f, 0.2f, 181.7f);
         [SerializeField] private float waitDurationAtTarget = 3.0f;
@@ -33,11 +45,29 @@ namespace ZeroHour.Phase2.Units
             public bool returning = false;
             public bool finished = false;
             public Transform rotorTransform;
+
+            // Sevk sistemi: her araç kendi görev hedefini ve park kuyruğunu taşır
+            public UnitType unitType;
+            public bool inMission = false;
+            public bool arrivedReported = false;
+            public Vector3 missionTarget;
+            public Vector3 missionRoadTarget;
+            public List<GameObject> parkQueue;
         }
 
         private readonly List<VehicleTestState> vehicleStates = new List<VehicleTestState>();
         private bool isTestActive = false;
         private GameObject targetVisualMarker;
+
+        private void Awake()
+        {
+            Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
 
         private void Start()
         {
@@ -56,6 +86,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     foreach (var go in FindObjectsByType<GameObject>(FindObjectsSortMode.None))
                     {
+                        if (go.transform is RectTransform) continue; // UI yazıları (örn. "Label_Ambulance") araç sanılmasın
                         string n = go.name.ToLower();
                         if (n.Contains("helicopter") && !n.Contains("helipad") && !n.Contains("roof"))
                         {
@@ -74,6 +105,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     foreach (var go in FindObjectsByType<GameObject>(FindObjectsSortMode.None))
                     {
+                        if (go.transform is RectTransform) continue; // UI yazıları (örn. "Label_Ambulance") araç sanılmasın
                         string n = go.name.ToLower();
                         if (n.Contains("bus_color02") || (n.Contains("bus") && n.Contains("separate")))
                         {
@@ -92,6 +124,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     foreach (var go in FindObjectsByType<GameObject>(FindObjectsSortMode.None))
                     {
+                        if (go.transform is RectTransform) continue; // UI yazıları (örn. "Label_Ambulance") araç sanılmasın
                         string n = go.name.ToLower();
                         if (n.Contains("police") && n.Contains("separate"))
                         {
@@ -110,6 +143,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     foreach (var go in FindObjectsByType<GameObject>(FindObjectsSortMode.None))
                     {
+                        if (go.transform is RectTransform) continue; // UI yazıları (örn. "Label_Ambulance") araç sanılmasın
                         string n = go.name.ToLower();
                         if (n.Contains("ambulance"))
                         {
@@ -183,7 +217,11 @@ namespace ZeroHour.Phase2.Units
                     obj = v,
                     homePosition = v.transform.position,
                     homeRotation = v.transform.rotation,
-                    isHelicopter = isHeli
+                    isHelicopter = isHeli,
+                    unitType = isHeli ? UnitType.RescueHelicopter
+                             : v == fireTruck ? UnitType.FireEngine
+                             : v == policeCar ? UnitType.PoliceCruiser
+                             : UnitType.Ambulance
                 };
 
                 // Helikopter pervanesini bul
@@ -240,11 +278,13 @@ namespace ZeroHour.Phase2.Units
             }
 
             Debug.Log($"<color=cyan>[A* Tester] 4 ana araç teste bağlandı ({vehicleStates.Count} araç): Kazasız Konvoy Radarı ve Asfalt Cadde Park Sistemi aktif edildi.</color>");
+            OnFleetChanged?.Invoke();
         }
 
         private void CreateTargetMarker()
         {
             if (targetVisualMarker != null) Destroy(targetVisualMarker);
+            if (!showDebugPanel) return; // Oyun modunda kırmızı test diski gösterilmez
 
             targetVisualMarker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             targetVisualMarker.name = "AStar_Test_Target_Marker";
@@ -267,7 +307,7 @@ namespace ZeroHour.Phase2.Units
 
         private void Update()
         {
-            if (IsSpacePressed())
+            if (showDebugPanel && IsSpacePressed())
             {
                 StartAStarTest();
             }
@@ -276,7 +316,7 @@ namespace ZeroHour.Phase2.Units
 
             foreach (var state in vehicleStates)
             {
-                if (state.finished || state.obj == null) continue;
+                if (state.finished || state.obj == null || !state.inMission) continue;
 
                 if (state.isHelicopter)
                 {
@@ -320,22 +360,132 @@ namespace ZeroHour.Phase2.Units
 
             foreach (var state in vehicleStates)
             {
-                state.timer = 0f;
-                state.returning = false;
-                state.finished = false;
-                state.status = "Yolda (Hedefe Gidiyor...)";
+                BeginMission(state, targetPosition, roadTarget, parkedAtTarget);
+            }
 
-                if (!state.isHelicopter && state.agent != null && state.agent.isOnNavMesh)
+            OnFleetChanged?.Invoke();
+        }
+
+        private void BeginMission(VehicleTestState state, Vector3 target, Vector3 roadTarget, List<GameObject> queue)
+        {
+            state.timer = 0f;
+            state.returning = false;
+            state.finished = false;
+            state.inMission = true;
+            state.arrivedReported = false;
+            state.missionTarget = target;
+            state.missionRoadTarget = roadTarget;
+            state.parkQueue = queue;
+            state.status = "Yolda (Hedefe Gidiyor...)";
+
+            if (!state.isHelicopter && state.agent != null && state.agent.isOnNavMesh)
+            {
+                state.agent.isStopped = false;
+                state.agent.ResetPath();
+                state.agent.speed = 26f;
+
+                // Bütün araçlar yolun orta asfaltındaki cadde hedefine yönelir.
+                // Birbirinin arkasında durma ve mesafe koruma işini UpdateGroundAgentMovement yapar.
+                state.agent.SetDestination(roadTarget);
+            }
+        }
+
+        // ==========================================
+        // SEVK (DISPATCH) API'Sİ — Kaza Dosyası buradan araç gönderir
+        // ==========================================
+
+        /// <summary>Bu tipte üssünde bekleyen (görevde olmayan) araç sayısı.</summary>
+        public int GetAvailableCount(UnitType type)
+        {
+            int count = 0;
+            foreach (var s in vehicleStates)
+            {
+                if (s.obj != null && s.unitType == type && !s.inMission) count++;
+            }
+            return count;
+        }
+
+        /// <summary>Bu tipteki toplam araç sayısı.</summary>
+        public int GetTotalCount(UnitType type)
+        {
+            int count = 0;
+            foreach (var s in vehicleStates)
+            {
+                if (s.obj != null && s.unitType == type) count++;
+            }
+            return count;
+        }
+
+        /// <summary>Bu tipteki ilk aracın üs konumu (mesafe hesabı için). Araç yoksa false.</summary>
+        public bool TryGetHomePosition(UnitType type, out Vector3 home)
+        {
+            foreach (var s in vehicleStates)
+            {
+                if (s.obj != null && s.unitType == type)
                 {
-                    state.agent.isStopped = false;
-                    state.agent.ResetPath();
-                    state.agent.speed = 26f;
-
-                    // Bütün araçlar yolun orta asfaltındaki cadde hedefine yönelir.
-                    // Birbirinin arkasında durma ve mesafe koruma işini UpdateGroundAgentMovement yapar.
-                    state.agent.SetDestination(roadTarget);
+                    home = s.homePosition;
+                    return true;
                 }
             }
+            home = Vector3.zero;
+            return false;
+        }
+
+        /// <summary>
+        /// Seçilen birim tiplerinden boşta olan araçları verilen olay yerine gönderir.
+        /// Hareket, konvoy mesafesi ve VTOL mantığı test moduyla birebir aynıdır.
+        /// </summary>
+        /// <returns>Yola çıkan araç sayısı.</returns>
+        public int DispatchVehicles(Vector3 siteTarget, IList<UnitType> types)
+        {
+            Vector3 roadTarget = GetRoadTargetNear(siteTarget);
+            List<GameObject> queue = new List<GameObject>();
+            int sent = 0;
+
+            foreach (UnitType type in types)
+            {
+                foreach (var state in vehicleStates)
+                {
+                    if (state.obj == null || state.unitType != type || state.inMission) continue;
+                    BeginMission(state, siteTarget, roadTarget, queue);
+                    sent++;
+                    break;
+                }
+            }
+
+            if (sent > 0)
+            {
+                isTestActive = true;
+                OnFleetChanged?.Invoke();
+            }
+            return sent;
+        }
+
+        /// <summary>Olay binasına en yakın asfalt (NavMesh) noktası.</summary>
+        public Vector3 GetRoadTargetNear(Vector3 site)
+        {
+            if (NavMesh.SamplePosition(site, out NavMeshHit hit, 40.0f, NavMesh.AllAreas))
+            {
+                return hit.position;
+            }
+            if (NavMesh.SamplePosition(site, out NavMeshHit broadHit, 120.0f, NavMesh.AllAreas))
+            {
+                return broadHit.position;
+            }
+            return site;
+        }
+
+        private void ReportArrival(VehicleTestState state)
+        {
+            if (state.arrivedReported) return;
+            state.arrivedReported = true;
+            OnVehicleArrived?.Invoke(state.unitType, state.missionTarget);
+        }
+
+        private void FinishMission(VehicleTestState state)
+        {
+            state.inMission = false;
+            OnFleetChanged?.Invoke();
         }
 
         private float GetSafeDistance(GameObject a, GameObject b)
@@ -386,7 +536,7 @@ namespace ZeroHour.Phase2.Units
 
             foreach (var other in vehicleStates)
             {
-                if (other == current || other.isHelicopter || other.obj == null || other.finished) continue;
+                if (other == current || other.isHelicopter || other.obj == null || other.finished || !other.inMission) continue;
 
                 Vector3 otherPos = other.obj.transform.position;
                 otherPos.y = 0f;
@@ -410,16 +560,33 @@ namespace ZeroHour.Phase2.Units
             return closestAhead;
         }
 
+        /// <summary>
+        /// Öndeki araç için durmalı mıyım? Normalde evet. Ancak iki araç birbirine dönük duruyorsa
+        /// (ikisi de diğerini "önümde" görüyor) sonsuz kilitlenme olur: listede önce gelen geçer, diğeri bekler.
+        /// </summary>
+        private bool ShouldYieldTo(VehicleTestState me, VehicleTestState ahead)
+        {
+            if (ahead == null) return false;
+
+            VehicleTestState theirAhead = GetVehicleAheadInMyPath(ahead, out _);
+            if (theirAhead != me) return true;
+
+            return vehicleStates.IndexOf(me) > vehicleStates.IndexOf(ahead);
+        }
+
         private void UpdateGroundAgentMovement(VehicleTestState state)
         {
             NavMeshAgent agent = state.agent;
             if (agent == null || !agent.isOnNavMesh) return;
 
+            // Her görevin kendi park kuyruğu ve hedefi vardır (aynı anda farklı olay yerleri)
+            List<GameObject> parkedAtTarget = state.parkQueue ?? this.parkedAtTarget;
+
             // Sadece hareket yönümüzün ÖNÜNDE kalan aracı kontrol et
             VehicleTestState aheadVehicle = GetVehicleAheadInMyPath(state, out float distToAhead);
             float safeDistToAhead = (aheadVehicle != null) ? GetSafeDistance(state.obj, aheadVehicle.obj) : 10.5f;
 
-            Vector3 roadTarget = GetRoadTarget();
+            Vector3 roadTarget = state.missionRoadTarget;
             Vector3 myPos = state.obj.transform.position;
             myPos.y = 0f;
             Vector3 targetPos = roadTarget;
@@ -474,6 +641,7 @@ namespace ZeroHour.Phase2.Units
 
                 if (isAlreadyParked)
                 {
+                    ReportArrival(state);
                     agent.isStopped = true;
                     agent.velocity = Vector3.zero;
                     state.status = $"Hedefe vardı ({parkedAtTarget.IndexOf(state.obj) + 1}. Sırada bekliyor) ({Mathf.CeilToInt(waitDurationAtTarget - state.timer)}s)...";
@@ -505,7 +673,7 @@ namespace ZeroHour.Phase2.Units
                 else
                 {
                     // SEYİR HALİNDE ÖNDEKİ ARACI TAKİP VE ÇARPIŞMA ÖNLEME:
-                    if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f)
+                    if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f && ShouldYieldTo(state, aheadVehicle))
                     {
                         if (distToAhead <= safeDistToAhead)
                         {
@@ -532,13 +700,14 @@ namespace ZeroHour.Phase2.Units
             else
             {
                 // DÖNÜŞ YOLUNDAYIZ:
-                if (aheadVehicle != null && distToAhead <= safeDistToAhead)
+                bool yieldToAhead = ShouldYieldTo(state, aheadVehicle);
+                if (aheadVehicle != null && distToAhead <= safeDistToAhead && yieldToAhead)
                 {
                     // Sadece hareket yönümüzün ÖNÜNDE araç varsa dururuz (arkamızda kalan araçlar için asla durmayız!)
                     agent.isStopped = true;
                     agent.velocity = Vector3.zero;
                 }
-                else if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f)
+                else if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f && yieldToAhead)
                 {
                     agent.isStopped = false;
                     float t = Mathf.Clamp01((distToAhead - safeDistToAhead) / 10.0f);
@@ -561,6 +730,7 @@ namespace ZeroHour.Phase2.Units
                     agent.velocity = Vector3.zero;
                     state.obj.transform.position = state.homePosition;
                     state.obj.transform.rotation = state.homeRotation;
+                    FinishMission(state);
                     Debug.Log($"<color=green>[A* Tester] ✅ {state.obj.name} kendi istasyonuna başarıyla geri dönüp park etti!</color>");
                 }
             }
@@ -592,6 +762,7 @@ namespace ZeroHour.Phase2.Units
                 }
 
                 // FAZ 2: Hedefe Doğru Yüksek Hızda Uçuş
+                Vector3 targetPosition = state.missionTarget;
                 Vector3 targetAtCruise = new Vector3(targetPosition.x, cruiseAltitude, targetPosition.z);
                 t.position = Vector3.MoveTowards(t.position, targetAtCruise, heliFlightSpeed * Time.deltaTime);
 
@@ -607,6 +778,7 @@ namespace ZeroHour.Phase2.Units
                 // Hedefe varış
                 if (Vector3.Distance(new Vector3(t.position.x, 0, t.position.z), new Vector3(targetPosition.x, 0, targetPosition.z)) < 2.0f)
                 {
+                    ReportArrival(state);
                     state.status = $"Hedefin üstünde asılı! Bekliyor ({Mathf.CeilToInt(waitDurationAtTarget - state.timer)}s)...";
                     state.timer += Time.deltaTime;
 
@@ -650,6 +822,7 @@ namespace ZeroHour.Phase2.Units
                         t.rotation = state.homeRotation;
                         state.finished = true;
                         state.status = "✅ Helipade İndi ve Park Etti";
+                        FinishMission(state);
                         Debug.Log("<color=green>[A* Tester] Helikopter helipade dikey iniş yaptı ve park etti! ✅</color>");
                     }
                 }
@@ -658,6 +831,8 @@ namespace ZeroHour.Phase2.Units
 
         private void OnGUI()
         {
+            if (!showDebugPanel) return;
+
             GUILayout.BeginArea(new Rect(25, 25, 420, 240), GUI.skin.box);
             GUILayout.Label("<b><size=16>🚨 ZERO HOUR: A* HAREKET TESTİ</size></b>");
             GUILayout.Label($"Hedef: <color=yellow>{targetPosition}</color>");

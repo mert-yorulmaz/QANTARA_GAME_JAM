@@ -13,6 +13,9 @@ namespace ZeroHour.Phase2.Core
         [SerializeField] private float zoomSpeed = 8f;
         [SerializeField] private float minOrthoSize = 6f;
         [SerializeField] private float maxOrthoSize = 22f;
+        [Tooltip("Perspektif kamerada zoom ile inilebilecek en düşük / en yüksek kamera yüksekliği")]
+        [SerializeField] private float minZoomHeight = 40f;
+        [SerializeField] private float maxZoomHeight = 260f;
 
         [Header("Edge Scrolling (Optional)")]
         [SerializeField] private bool enableEdgeScroll = false;
@@ -81,8 +84,15 @@ namespace ZeroHour.Phase2.Core
                 if (mousePos.y <= edgeBorder) vertical = -1f;
             }
 
-            // In isometric 45-degree projection, move along world X and Z
-            Vector3 move = new Vector3(horizontal + vertical, 0, vertical - horizontal).normalized * (panSpeed * Time.deltaTime);
+            // Kameranın baktığı yöne göre zeminde kaydır (45° izometrikte eski formülle birebir aynı sonuç)
+            Vector3 flatForward = transform.forward;
+            flatForward.y = 0f;
+            if (flatForward.sqrMagnitude < 0.0001f) flatForward = transform.up;
+            flatForward.y = 0f;
+            flatForward.Normalize();
+            Vector3 flatRight = new Vector3(flatForward.z, 0f, -flatForward.x);
+
+            Vector3 move = (flatRight * horizontal + flatForward * vertical).normalized * (panSpeed * Time.deltaTime);
 
             Vector3 newPos = transform.position + move;
             newPos.x = Mathf.Clamp(newPos.x, minPanLimits.x, maxPanLimits.x);
@@ -118,7 +128,11 @@ namespace ZeroHour.Phase2.Core
                 }
                 else
                 {
-                    transform.position += transform.forward * (scroll * zoomSpeed * 10f);
+                    Vector3 zoomed = transform.position + transform.forward * (scroll * zoomSpeed * 10f);
+                    if (zoomed.y >= minZoomHeight && zoomed.y <= maxZoomHeight)
+                    {
+                        transform.position = zoomed;
+                    }
                 }
             }
         }
