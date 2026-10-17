@@ -232,3 +232,25 @@
 2. `claude/faz2-ui` → `main` birleştirme (`git switch main && git merge claude/faz2-ui`) ve push.
 3. Faz 1 ile birleştirme, vardiya sonu (05:00) ve karne ekranı.
 4. Windows Standalone Build, video, teslim formu (commit ID).
+
+## ➕ Güncelleme 2 Eki (Claude Code)
+
+### 🤖 Yapay Zeka Kullanım Beyanı — GÜNCEL SATIR
+> Yukarıdaki "EKLENECEK SATIR (Taslak)" artık **eskidir** ("henüz oyun C# kodu yazılmadı" diyordu). Teslim formuna ve Ek A.5 tablosuna bu satır taşınmalıdır (README'ye eklendi).
+
+| Kullanılan Araç | Kullanım Amacı | Kullanıldığı Bölümler |
+| :--- | :--- | :--- |
+| **Claude Code (Anthropic)**, Unity MCP ile | Gelen çağrı, harita olay rozetleri ve Kaza Dosyası sistemlerinin kodlanması; sahneye tek tıkla kurulum; araç konvoyuna sevk API'si; test sırasında bulunan hataların düzeltilmesi; Play Mode testleri; dokümantasyon | `Scripts/Phase2_Dispatch/Calls/` (tümü), `Editor/CallSystemSceneBuilder.cs`; değişiklik: `Units/AStarMovementTester.cs`, `UI/DispatchHUD.cs`, `Core/TacticalCameraController.cs`, `SampleScene.unity`, `Prefabs/Calls/`, `progress.md`, `README.md` |
+
+### 🔎 Neden `IncidentPopupUI.cs` genişletilmedi?
+`IncidentPopupUI` tamamen `DispatchManager.OnBuildingSelected` ve `BuildingNode.CurrentIncident` üzerine kurulu. İkisi de sahnede yok ve `DispatchManager` çalışan konvoy araçlarını kullanmıyor. Ayrıca birim başına tek tık "gönder" butonu var; handover'daki `[-] 0 [+]` seçici, DISMISS CALL, polaroid ve kalan süre yok. Bu yüzden Kaza Dosyası ayrı `IncidentFileUI` olarak yazıldı. `IncidentPopupUI.cs` silinmedi, dokunulmadı.
+
+### ✅ Master prompt kontrolü
+- [x] Bölüm 0: MCP bağlı, `claude/faz2-ui` branch, handover değişikliğine dokunulmadı
+- [x] Bölüm 1: Kurulum script'leri (`EmergencySystemSetup`, `HUDCanvasBuilder`) okundu ve riskleri raporlandı; çalıştırılmadı (NavMesh'i yeniden fırınlıyor, konvoysuz yeni araçlar üretiyor, ikinci HUD açıyor)
+- [x] Bölüm 2: Üç görev tamamlandı ve test edildi
+- [x] Bölüm 3: Faz 1, NavMesh fırını, bina materyalleri dokunulmadı; yeni kod sadece New Input System; asset silinmedi; paket eklenmedi; proje ayarı değişmedi (sadece 7 UI görselinin import ayarı Sprite yapıldı)
+- [x] Bölüm 4: 0 derleme hatası; tam akış Play Mode'da test edildi — **istisna:** gerçek fare ve sesin kulakla dinlenmesi (bkz. "Doğrulanamayanlar")
+- [x] Bölüm 5: progress.md'ye ekleme yapıldı (silme yok), README AI beyanı + hazır kaynaklar + kontroller güncellendi
+- [x] Bölüm 6: Rapor verildi
+- **Not:** Konvoy hareket koduna (kural 3) iki küçük müdahale yapıldı: araç başına hedef/kuyruk ve sadece *karşılıklı* kilitlenmede yol verme. Normal 10.5 m takip/fren ve VTOL hesapları değişmedi; orijinal A* testi tekrar çalıştırılıp tüm araçların döndüğü doğrulandı.
