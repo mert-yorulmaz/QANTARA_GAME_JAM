@@ -44,10 +44,14 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 
 | Alan | Girilecek Bilgi |
 | :--- | :--- |
-| **Kaynak ve Sağlayıcı** | SimplePoly City - Low Poly Assets / Sağlayıcı: SimplePoly (JustCreate) |
+| **Kaynak ve Sağlayıcı (1)** | SimplePoly City - Low Poly Assets / Sağlayıcı: SimplePoly (JustCreate) |
 | **Kaynak Bağlantısı** | [Unity Asset Store - SimplePoly City](https://assetstore.unity.com/packages/3d/environments/urban/simplepoly-city-low-poly-assets-58883) |
 | **Lisans / Kullanım İzni** | Unity Standard Asset License (Free / Commercial Game Jam use allowed) |
 | **Kullanım ve Değişiklik** | 3D Şehir yolları, sokak modülleri ve bina meshleri seviye tasarımında kullanıldı. Materyaller oyunun fütüristik taktiksel hologram temasına uyacak şekilde özelleştirildi. |
+| **Kaynak ve Sağlayıcı (2)** | Planes & Choppers - PolyPack / Sağlayıcı: Alstra Infinite |
+| **Kaynak Bağlantısı** | [Unity Asset Store - Planes & Choppers](https://assetstore.unity.com/packages/3d/vehicles/air/planes-choppers-polypack-194946) |
+| **Lisans / Kullanım İzni** | Standard Unity Asset Store EULA (Free) |
+| **Kullanım ve Değişiklik** | Çatıda mahsur kalan sivilleri tahliye eden ve uzak yangınlara müdahale eden Arama-Kurtarma Helikopteri (`Rescue Helicopter`) olarak kullanıldı. |
 | **Repoda Bulunmayan Dosyalar** | Yok. Gerekli tüm varlıklar Unity projesinin Assets klasörüne dahil edilmiştir. |
 
 ---

@@ -87,6 +87,7 @@
 | Kaynak Adı / Sağlayıcı | Edinildiği Sayfa / Kaynak | Lisans Türü | Projedeki Kullanım Yeri ve Değişiklik |
 | :--- | :--- | :--- | :--- |
 | **SimplePoly City - Low Poly Assets** | Unity Asset Store | Unity Standard Asset License | 3D Şehir yolları ve binaların modelleri için kullanıldı. Materyaller holografik tarz için özelleştirildi. |
+| **Planes & Choppers - PolyPack** (Alstra Infinite) | [Unity Asset Store](https://assetstore.unity.com/packages/3d/vehicles/air/planes-choppers-polypack-194946) | Standard Unity Asset Store EULA | Arama-Kurtarma ve Çatı Tahliyesi Helikopteri (`Rescue Helicopter`) olarak kullanıldı. |
 
 ### 🤖 Yapay Zeka (AI) Kullanım Beyanı (Ek A.5)
 | Kullanılan Araç | Kullanım Amacı | Kullanıldığı Bölümler |

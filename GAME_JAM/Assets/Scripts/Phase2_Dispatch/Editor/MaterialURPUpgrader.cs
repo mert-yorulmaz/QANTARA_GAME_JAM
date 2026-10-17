@@ -16,7 +16,7 @@ namespace ZeroHour.Phase2.Editor
                 return;
             }
 
-            string[] matGuids = AssetDatabase.FindAssets("t:Material", new[] { "Assets/SimplePoly City - Low Poly Assets/Materials" });
+            string[] matGuids = AssetDatabase.FindAssets("t:Material", new[] { "Assets" });
             int converted = 0;
 
             foreach (string guid in matGuids)
