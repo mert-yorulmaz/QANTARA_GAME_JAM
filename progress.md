@@ -105,3 +105,70 @@
 - [ ] Tam Git Commit ID teslim formuna girildi (Build ile birebir aynı commit).
 - [ ] Kurulum ve kontroller rehberi (`README.md` / `Çalıştırma Talimatları`) eklendi.
 - [ ] 5 dakikalık jüri sunumu provası yapıldı.
+
+---
+---
+
+# 🔄 GÜNCELLEME BÖLÜMÜ — 18 Ekim 2026 (Pazar)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR SONRADAN EKLENMİŞTİR "CLAUDE"
+> Yukarıdaki bölümlerin (satır 1–107) hiçbiri silinmedi veya değiştirilmedi. Onlar **17 Ekim Cumartesi sabahının** durumunu yansıtır ve **eskimiştir**.
+> Bu bölüm, 18 Ekim'de **Claude Code** tarafından proje dosyaları ve Unity sahnesi incelenerek hazırlandı. Bir madde "doğrulandı" diyorsa dosyada veya sahnede görüldü. "Doğrulanmadı" diyorsa kaynağı elle test edilmeden kesin kabul edilmemeli.
+> Güncel tarih ile yukarıdaki geri sayım arasında uyumsuzluk var: **Git destek sınırı bugün 12:00, resmî teslim bugün 18:00 (UTC+3).**
+
+## 🧭 Yukarıdaki Bölümlerin Güncel Durumu (Eskimiş Satırlar İçin Düzeltme)
+
+| Yukarıdaki iddia | Güncel durum | Doğrulama |
+| :--- | :--- | :--- |
+| "17 Ekim sabahı, kalan ~35 saat" (satır 14–15) | Süre bugün 18:00'de doluyor. Git desteği 12:00'de bitiyor. | Dosyadaki resmî tarihlerden |
+| `IncidentPopupUI`, `DispatchTerminalUI`, `ShiftDebriefUI` ve `DispatchHUD` yapılmadı `[ ]` (satır 64–70) | Dört script de `Assets/Scripts/Phase2_Dispatch/UI/` altında **mevcut**. Sahneye bağlı olup doğru çalıştıkları **doğrulanmadı**. | Dosya var, çalışma doğrulanmadı |
+| Yol ağı "kullanıcı tarafından yapılıyor" (satır 48) | Handover'a göre A* NavMesh için 126 parça cadde fırınlandı, araç konvoyu çalışıyor. `CityNavMeshBaker.cs` mevcut. | Handover + dosya var, oyunda test edilmedi |
+| Kamera pan/zoom `[ ]` (satır 75) | `TacticalCameraController.cs` mevcut, handover'a göre WASD pan, zoom ve clamp çalışıyor. | Dosya var, oyunda test edilmedi |
+| Ayarlar menüsü listede yok | `SettingsUI.cs` mevcut (ses, müzik, dil, tam ekran). | Dosya var, oyunda test edilmedi |
+| Faz 1 hiç anılmıyor | Faz 1 (Gündüz Masası) başka ekip üyesi tarafından yapılıyor. Bu bölümde kodlanmadı, **dokunulmayacak**. | Handover |
+
+## ✅ Doğrulanan Güncel Durum (Dosya / Sahne İncelemesi)
+
+- [x] `Assets/Scripts/Phase2_Dispatch/` altında 22 C# dosyası var: `Core/` (CityStatsManager, DispatchManager, ShiftTimelineController, TacticalCameraController), `Data/` (DispatchEnums, Phase1BridgeData), `Incidents/` (BuildingNode, IncidentInstance), `Units/` (EmergencyUnit, UnitStation, AStarMovementTester), `UI/` (DispatchHUD, DispatchTerminalUI, IncidentPopupUI, SettingsUI, ShiftDebriefUI) ve `Editor/` (CityNavMeshBaker, CityStreetLighting, EmergencySystemSetup, HUDCanvasBuilder, MaterialURPUpgrader, TacticalNightAtmosphere).
+- [x] `CityStatsManager.OnCallDismissed(int civiliansLost = 5)` ve `DispatchManager.DispatchUnit(UnitType, BuildingNode)` metotları mevcut. Yeni çağrı/kaza dosyası sistemi bunlara bağlanabilir.
+- [x] Yağız'ın UI PNG'leri `Assets/UI/Dispatch_UI_Assets/03_ui_components/` altında hazır: `call_card_ringing`, `call_card_listening`, `call_progress_fill`, `hud_units_panel`, `hud_population_panel`, `incident_file_panel`, `marker_collapse`, `marker_fire` (ve `marker_unverified` handover'da anılıyor, bu incelemede doğrulanmadı).
+- [x] Sahne: `Assets/Scenes/SampleScene.unity`, 755 kök nesne, Unity MCP ile okundu. Bir `Canvas` nesnesi ve bir `Props_Roof Helipad` nesnesi var.
+- [x] Proje üzerinde kayıtlı son commit: `de543b3` (17 Ekim 23:39). Çalışma ağacında işlenmemiş değişiklikler: `CLAUDE_PROJECT_HANDOVER.md`, `GAME_JAM/Packages/manifest.json`, `GAME_JAM/Packages/packages-lock.json`.
+
+## ❌ Henüz Yapılmayan / Eksik Olduğu Görülen İşler
+
+- [ ] **Gelen çağrı sistemi** (10–15 sn döngü, `call_card_ringing` / `call_card_listening`, 3 sn dinleme barı, reddedilince sivil kaybı): bu işi yapan bir script **bulunmadı**.
+- [ ] **Harita olay rozetleri** (bina üstünde billboard `marker_fire` / `marker_collapse`, tıklanabilir): bu işi yapan bir script **bulunmadı**.
+- [ ] **Kaza dosyası paneli** (`incident_file_panel`, `[-] 0 [+]` birim seçici, DISPATCH / DISMISS): `IncidentPopupUI.cs` mevcut ama handover'daki tasarıma (sarı dosya, Polaroid, birim sayıcıları) uyup uymadığı **doğrulanmadı**.
+- [ ] **Kritik afet binaları** (`BLD_QUAKE_SECTOR`, `BLD_FIRE_SECTOR`, `BLD_HOTEL`, `BLD_METRO_PLAZA`, `BLD_COMMERCIAL`): sahne dosyasında bu adlarla **nesne bulunamadı**. Farklı adlandırılmış olabilirler, elle kontrol gerekir.
+- [ ] **İstasyonlar** (`UnitStation`): sahne dosyasında "Station" adlı nesne bulunamadı. `Props_Roof Helipad` helipad için var. Diğer istasyonlar farklı adlandırılmış olabilir, doğrulanmadı.
+- [ ] **Faz 1 → Faz 2 köprüsü**: `Phase1BridgeData.cs` mevcut, ancak gündüz kararlarının geceki afet şiddetini gerçekten değiştirip değiştirmediği doğrulanmadı.
+- [ ] **Deprem sarsıntısı, afet pulseları, siren ışıkları** (Bölüm 4): doğrulanmadı.
+
+## ⚠️ Dikkat Edilmesi Gereken Riskler
+
+- **Eski Input kullanımı:** `TacticalCameraController.cs` (`Input.GetAxisRaw`, `Input.GetAxis`), `SettingsUI.cs` (`Input.GetKeyDown`) ve `AStarMovementTester.cs` (`Input.GetKeyDown`) içinde eski Input API çağrıları görüldü. Handover projede New Input System kullanıldığını söylüyor. Bu çağrılar bir `#if` / yedek dal içinde olabilir. Bu incelemede **doğrulanmadı**. `activeInputHandler: 2 (Both)` olduğu sürece çalışması beklenir, ancak build'de test edilmeli.
+- **UI referans çözünürlüğü:** Handover Canvas Scaler'ı 1280x720 / Match 0.5 olarak veriyor. PNG'lerin hangi ölçekte çizildiği **doğrulanmadı**.
+- **Test edilmedi:** Bu incelemede Play Mode'a girilmedi, oyun çalıştırılmadı. Yukarıdaki "mevcut" ifadeleri dosyanın varlığını söyler, çalıştığını değil.
+
+## 🤖 Yapay Zeka Kullanım Beyanı — EKLENECEK SATIR (Taslak, Onay Bekliyor)
+
+> Yukarıdaki Ek A.5 tablosunda yalnızca Google Antigravity / Gemini AI yazıyor. Handover dosyası bu projede **Claude** kullanıldığını gösteriyor. Kural 4.4 / 10.1 uyarınca beyan edilmeyen AI kullanımı diskalifiye nedenidir. Teslim formuna girmeden önce proje sahibi aşağıdaki satırı **doğrulayıp** tabloya taşımalıdır.
+
+| Kullanılan Araç | Kullanım Amacı | Kullanıldığı Bölümler |
+| :--- | :--- | :--- |
+| **Claude Code (Anthropic)** | Proje dosyalarının incelenmesi, Unity MCP bağlantısının kurulması, `progress.md` güncellemesi. Çağrı, rozet ve kaza dosyası sistemleri yazılırsa kod yazımı da buraya eklenecek. | `progress.md`, `GAME_JAM/Packages/manifest.json` (MCP paketi). **Not:** Henüz oyun C# kodu yazılmadı, yazılırsa dosya adları buraya işlenecek. |
+
+## 🛠️ Bu Oturumda Yapılan Teknik Değişiklikler (Claude Code)
+
+- `GAME_JAM/Packages/manifest.json`: `com.coplaydev.unity-mcp` paketi `v10.0.0` sürümüne sabitlenerek eklendi (Unity MCP köprüsü, geliştirme aracıdır). Oyun koduna girmez. **Hazır kaynak beyanına eklenmeli mi?** Teslimde proje klasörüne dahil olacağı için karar proje sahibine ait. Beyana eklenmesi güvenli taraftır.
+- `GAME_JAM/Packages/packages-lock.json`: Unity tarafından otomatik güncellendi.
+- Bilgisayara `uv` (Python paket aracı) kuruldu, proje dosyası değildir.
+
+## 📋 Önerilen Sıradaki Adımlar (Süre: Bugün 18:00'e kadar)
+
+1. Sahnede çalıştırıp neyin gerçekten çalıştığını gör (Play Mode testi) ve bu bölümdeki "doğrulanmadı" satırlarını güncelle.
+2. Çağrı sistemi, olay rozetleri ve kaza dosyası paneli (Handover görev 1–3).
+3. Faz 1 ile birleştirme ve Windows Standalone Build.
+4. Beyan tablolarını (üstteki taslak dahil) gözden geçirip README ile birlikte güncelle.
+5. Public repo, build linki, tanıtım videosu, commit ID'nin teslim formuna girilmesi.

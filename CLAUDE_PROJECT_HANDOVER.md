@@ -84,6 +84,3 @@ Assets/UI/Dispatch_UI_Assets altındaki hazır PNG'leri kullanarak şu 3 sistemi
 1. Incoming Call (Çağrı) Sistemi (call_card_ringing & listening, 3s dinleme barı, 10s döngü, reddedilince sivil kaybı).
 2. Haritada bina üstünde çıkan 3D Billboard Rozet (marker_fire & marker_collapse).
 3. Rozete tıklanınca açılan Sarı Kaza Dosyası (incident_file_panel, [-] 0 [+] birim seçici, DISPATCH ve DISMISS).
-
-Lütfen sahnede Canvas elemanlarını tek tıkla dizecek bir Editor Scripti ([MenuItem]) ile birlikte eksiksiz C# kodlarını ver.
-```
