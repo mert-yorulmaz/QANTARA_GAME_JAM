@@ -34,15 +34,51 @@ namespace ZeroHour.Phase2.Core
 
         private void HandlePan()
         {
-            float horizontal = Input.GetAxisRaw("Horizontal");
-            float vertical = Input.GetAxisRaw("Vertical");
+            float horizontal = 0f;
+            float vertical = 0f;
+
+            // 1. New Input System (Keyboard)
+            try
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null)
+                {
+                    if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) horizontal += 1f;
+                    if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) horizontal -= 1f;
+                    if (kb.wKey.isPressed || kb.upArrowKey.isPressed) vertical += 1f;
+                    if (kb.sKey.isPressed || kb.downArrowKey.isPressed) vertical -= 1f;
+                }
+            }
+            catch { }
+
+            // 2. Legacy Input Fallback
+            if (horizontal == 0f && vertical == 0f)
+            {
+                try
+                {
+                    horizontal = Input.GetAxisRaw("Horizontal");
+                    vertical = Input.GetAxisRaw("Vertical");
+                }
+                catch { }
+            }
 
             if (enableEdgeScroll)
             {
-                if (Input.mousePosition.x >= Screen.width - edgeBorder) horizontal = 1f;
-                if (Input.mousePosition.x <= edgeBorder) horizontal = -1f;
-                if (Input.mousePosition.y >= Screen.height - edgeBorder) vertical = 1f;
-                if (Input.mousePosition.y <= edgeBorder) vertical = -1f;
+                Vector2 mousePos = Vector2.zero;
+                try
+                {
+                    var mouse = UnityEngine.InputSystem.Mouse.current;
+                    if (mouse != null) mousePos = mouse.position.ReadValue();
+                }
+                catch
+                {
+                    try { mousePos = Input.mousePosition; } catch { }
+                }
+
+                if (mousePos.x >= Screen.width - edgeBorder) horizontal = 1f;
+                if (mousePos.x <= edgeBorder) horizontal = -1f;
+                if (mousePos.y >= Screen.height - edgeBorder) vertical = 1f;
+                if (mousePos.y <= edgeBorder) vertical = -1f;
             }
 
             // In isometric 45-degree projection, move along world X and Z
@@ -57,16 +93,32 @@ namespace ZeroHour.Phase2.Core
 
         private void HandleZoom()
         {
-            float scroll = Input.GetAxis("Mouse ScrollWheel");
-            if (Mathf.Abs(scroll) > 0.01f && cam != null)
+            float scroll = 0f;
+            try
+            {
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                if (mouse != null) scroll = mouse.scroll.ReadValue().y * 0.001f;
+            }
+            catch { }
+
+            if (Mathf.Abs(scroll) < 0.0001f)
+            {
+                try
+                {
+                    scroll = Input.GetAxis("Mouse ScrollWheel");
+                }
+                catch { }
+            }
+
+            if (Mathf.Abs(scroll) > 0.001f && cam != null)
             {
                 if (cam.orthographic)
                 {
-                    cam.orthographicSize = Mathf.Clamp(cam.orthographicSize - scroll * zoomSpeed, minOrthoSize, maxOrthoSize);
+                    cam.orthographicSize = Mathf.Clamp(cam.orthographicSize - scroll * zoomSpeed * 10f, minOrthoSize, maxOrthoSize);
                 }
                 else
                 {
-                    transform.position += transform.forward * (scroll * zoomSpeed);
+                    transform.position += transform.forward * (scroll * zoomSpeed * 10f);
                 }
             }
         }

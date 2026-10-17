@@ -64,6 +64,13 @@ namespace ZeroHour.Phase2.Core
 
             ApplyPhase1DataToBuildings();
             SpawnFleet(bridgeData.fleet);
+
+            // Sahnedeki mevcut EmergencyUnit'leri de listeye dahil et
+            EmergencyUnit[] existingUnits = FindObjectsByType<EmergencyUnit>(FindObjectsSortMode.None);
+            foreach (var u in existingUnits)
+            {
+                RegisterUnit(u);
+            }
         }
 
         private void ApplyPhase1DataToBuildings()
@@ -202,6 +209,17 @@ namespace ZeroHour.Phase2.Core
             return count;
         }
 
+        public int GetActiveCount(UnitType type)
+        {
+            int count = 0;
+            for (int i = 0; i < allUnits.Count; i++)
+            {
+                if (allUnits[i] != null && allUnits[i].Type == type && allUnits[i].CurrentState != UnitState.IdleAtBase)
+                    count++;
+            }
+            return count;
+        }
+
         public int GetTotalCount(UnitType type)
         {
             int count = 0;
@@ -211,6 +229,16 @@ namespace ZeroHour.Phase2.Core
                     count++;
             }
             return count;
+        }
+
+        public void RegisterUnit(EmergencyUnit unit)
+        {
+            if (unit != null && !allUnits.Contains(unit))
+            {
+                unit.OnStateChanged += HandleUnitStateChanged;
+                allUnits.Add(unit);
+                OnUnitStateChanged?.Invoke(unit, unit.CurrentState);
+            }
         }
 
         public BuildingNode GetBuildingById(string bldId)

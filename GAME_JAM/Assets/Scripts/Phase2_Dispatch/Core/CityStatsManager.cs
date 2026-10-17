@@ -49,6 +49,15 @@ namespace ZeroHour.Phase2.Core
             OnStatsUpdated?.Invoke();
         }
 
+        /// <summary>
+        /// Arama reddedildiğinde (Dismiss Call) çağrılır; sivil nüfusu düşürür.
+        /// </summary>
+        public void OnCallDismissed(int civiliansLost = 5)
+        {
+            RegisterCasualty(civiliansLost);
+            Debug.LogWarning($"<color=orange>[CityStats] ⚠️ Acil çağrı reddedildi! {civiliansLost} sivil kaybedildi. Kalan Canlı: {CurrentSurvivors}/{initialTotalPopulation}</color>");
+        }
+
         public void ResolveCiviliansAtRisk(int count)
         {
             int saved = Mathf.Min(count, currentCiviliansAtRisk);

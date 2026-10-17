@@ -6,38 +6,80 @@ using ZeroHour.Phase2.Units;
 
 namespace ZeroHour.Phase2.UI
 {
+    public enum UnitCountDisplayMode
+    {
+        NumberOnly,          // Sadece sayı: "3"
+        AvailableSlashTotal, // Boşta / Toplam: "3/3"
+        AvailableSlashActive // Boşta / Görevde
+    }
+
     public class DispatchHUD : MonoBehaviour
     {
-        [Header("Top Header - City Statistics")]
-        [SerializeField] private TextMeshProUGUI populationText;
-        [SerializeField] private TextMeshProUGUI atRiskText;
-        [SerializeField] private TextMeshProUGUI casualtiesText;
-        [SerializeField] private TextMeshProUGUI rescuedText;
-        [SerializeField] private TextMeshProUGUI clockText;
+        [Header("--- 1. SABİT ÜST BAR: BİRİM SAYAÇLARI (UNITS) ---")]
+        [Tooltip("Polis ikonunun altındaki sayı Text'i")]
+        [SerializeField] private TMP_Text policeCountText;
 
-        [Header("Bottom Fleet Dock")]
-        [SerializeField] private TextMeshProUGUI fireEngineDockText;
-        [SerializeField] private TextMeshProUGUI ambulanceDockText;
-        [SerializeField] private TextMeshProUGUI policeDockText;
-        [SerializeField] private TextMeshProUGUI helicopterDockText;
+        [Tooltip("Ambulans ikonunun altındaki sayı Text'i")]
+        [SerializeField] private TMP_Text ambulanceCountText;
+
+        [Tooltip("İtfaiye ikonunun altındaki sayı Text'i")]
+        [SerializeField] private TMP_Text fireTruckCountText;
+
+        [Tooltip("Helikopter ikonunun altındaki sayı Text'i")]
+        [SerializeField] private TMP_Text helicopterCountText;
+
+        [Tooltip("Birimlerin altında sayının nasıl görüneceği")]
+        [SerializeField] private UnitCountDisplayMode countDisplayMode = UnitCountDisplayMode.NumberOnly;
+
+        [Header("--- 2. SABİT ÜST BAR: CANLI NÜFUS SAYACI (150/150) ---")]
+        [Tooltip("Sağ üstteki nüfus Text'i (Örn: 150 / 150)")]
+        [SerializeField] private TMP_Text populationText;
+
+        [Tooltip("Nüfus formatı. {0} = Kalan Canlı, {1} = Toplam Nüfus")]
+        [SerializeField] private string populationFormat = "{0} / {1}";
+
+        [Header("--- 3. İSTEĞE BAĞLI ALANLAR (Opsiyonel) ---")]
+        [SerializeField] private TMP_Text clockText;
+        [SerializeField] private TMP_Text atRiskText;
+        [SerializeField] private TMP_Text casualtiesText;
+        [SerializeField] private TMP_Text rescuedText;
+
+        private void OnEnable()
+        {
+            SubscribeEvents();
+            RefreshCityStats();
+            RefreshFleetDock();
+        }
 
         private void Start()
         {
+            RefreshCityStats();
+            RefreshFleetDock();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeEvents();
+        }
+
+        private void SubscribeEvents()
+        {
             if (CityStatsManager.Instance != null)
             {
+                CityStatsManager.Instance.OnStatsUpdated -= RefreshCityStats;
                 CityStatsManager.Instance.OnStatsUpdated += RefreshCityStats;
             }
 
             if (DispatchManager.Instance != null)
             {
+                DispatchManager.Instance.OnUnitStateChanged -= HandleUnitChanged;
                 DispatchManager.Instance.OnUnitStateChanged += HandleUnitChanged;
+                DispatchManager.Instance.OnUnitDispatched -= HandleUnitDispatched;
+                DispatchManager.Instance.OnUnitDispatched += HandleUnitDispatched;
             }
-
-            RefreshCityStats();
-            RefreshFleetDock();
         }
 
-        private void OnDestroy()
+        private void UnsubscribeEvents()
         {
             if (CityStatsManager.Instance != null)
             {
@@ -47,12 +89,13 @@ namespace ZeroHour.Phase2.UI
             if (DispatchManager.Instance != null)
             {
                 DispatchManager.Instance.OnUnitStateChanged -= HandleUnitChanged;
+                DispatchManager.Instance.OnUnitDispatched -= HandleUnitDispatched;
             }
         }
 
         private void Update()
         {
-            // Update simulated clock from ShiftTimelineController
+            // Dijital Saat (Opsiyonel)
             if (ShiftTimelineController.Instance != null && clockText != null)
             {
                 clockText.text = ShiftTimelineController.Instance.GetSimulatedClockTime();
@@ -64,13 +107,25 @@ namespace ZeroHour.Phase2.UI
             RefreshFleetDock();
         }
 
+        private void HandleUnitDispatched(EmergencyUnit unit, Incidents.BuildingNode building)
+        {
+            RefreshFleetDock();
+        }
+
+        /// <summary>
+        /// Nüfus sayacını (150/150) günceller.
+        /// </summary>
         public void RefreshCityStats()
         {
             if (CityStatsManager.Instance == null) return;
 
-            // Matching user sketch: [ 👤 150 / 150 ]
+            int survivors = CityStatsManager.Instance.CurrentSurvivors;
+            int total = CityStatsManager.Instance.InitialPopulation;
+
             if (populationText != null)
-                populationText.text = $"{CityStatsManager.Instance.CurrentSurvivors} / {CityStatsManager.Instance.InitialPopulation}";
+            {
+                populationText.text = string.Format(populationFormat, survivors, total);
+            }
 
             if (atRiskText != null)
                 atRiskText.text = $"AT RISK: {CityStatsManager.Instance.CiviliansAtRisk}";
@@ -82,38 +137,51 @@ namespace ZeroHour.Phase2.UI
                 rescuedText.text = $"RESCUED: {CityStatsManager.Instance.TotalRescued}";
         }
 
+        /// <summary>
+        /// 4 Birimin altındaki sayıları günceller (Police, Ambulance, Fire, Helicopter).
+        /// </summary>
         public void RefreshFleetDock()
         {
             if (DispatchManager.Instance == null) return;
 
-            // Matching user sketch: [ Police 4/5 ] [ Ambulance 5/5 ] [ Fire 6/6 ] [ Helicopter 5/5 ]
-            if (policeDockText != null)
-            {
-                int idle = DispatchManager.Instance.GetIdleCount(UnitType.PoliceCruiser);
-                int total = DispatchManager.Instance.GetTotalCount(UnitType.PoliceCruiser);
-                policeDockText.text = $"Police {idle}/{total}";
-            }
+            UpdateUnitText(policeCountText, UnitType.PoliceCruiser);
+            UpdateUnitText(ambulanceCountText, UnitType.Ambulance);
+            UpdateUnitText(fireTruckCountText, UnitType.FireEngine);
+            UpdateUnitText(helicopterCountText, UnitType.RescueHelicopter);
+        }
 
-            if (ambulanceDockText != null)
-            {
-                int idle = DispatchManager.Instance.GetIdleCount(UnitType.Ambulance);
-                int total = DispatchManager.Instance.GetTotalCount(UnitType.Ambulance);
-                ambulanceDockText.text = $"Ambulance {idle}/{total}";
-            }
+        private void UpdateUnitText(TMP_Text targetText, UnitType type)
+        {
+            if (targetText == null) return;
 
-            if (fireEngineDockText != null)
-            {
-                int idle = DispatchManager.Instance.GetIdleCount(UnitType.FireEngine);
-                int total = DispatchManager.Instance.GetTotalCount(UnitType.FireEngine);
-                fireEngineDockText.text = $"Fire {idle}/{total}";
-            }
+            int idle = DispatchManager.Instance.GetIdleCount(type);
+            int total = DispatchManager.Instance.GetTotalCount(type);
+            int active = DispatchManager.Instance.GetActiveCount(type);
 
-            if (helicopterDockText != null)
+            switch (countDisplayMode)
             {
-                int idle = DispatchManager.Instance.GetIdleCount(UnitType.RescueHelicopter);
-                int total = DispatchManager.Instance.GetTotalCount(UnitType.RescueHelicopter);
-                helicopterDockText.text = $"Helicopter {idle}/{total}";
+                case UnitCountDisplayMode.NumberOnly:
+                    // Sadece hazır/boşta olan araç sayısı: "3"
+                    targetText.text = idle.ToString();
+                    break;
+
+                case UnitCountDisplayMode.AvailableSlashTotal:
+                    // "3/3" veya "1/2"
+                    targetText.text = $"{idle}/{total}";
+                    break;
+
+                case UnitCountDisplayMode.AvailableSlashActive:
+                    // Boşta / Görevde
+                    targetText.text = $"{idle} ({active})";
+                    break;
             }
+        }
+
+        [ContextMenu("⚡ Force Update HUD")]
+        public void ForceUpdateHUD()
+        {
+            RefreshCityStats();
+            RefreshFleetDock();
         }
     }
 }
