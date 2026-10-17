@@ -225,9 +225,9 @@ namespace ZeroHour.Phase2.Units
                         }
                     }
 
-                    agent.speed = 14f; // 50 km/s - Kontrollü, gerçekçi ve kazasız seyir hızı
-                    agent.acceleration = 25f;
-                    agent.angularSpeed = 480f;
+                    agent.speed = 26f; // Hızlı ve dinamik acil müdahale hızı (Yaklaşık 95 km/s)
+                    agent.acceleration = 45f;
+                    agent.angularSpeed = 540f;
                     agent.stoppingDistance = 1.0f;
                     agent.radius = (v == fireTruck) ? 1.6f : 1.2f;
                     agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
@@ -329,7 +329,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     state.agent.isStopped = false;
                     state.agent.ResetPath();
-                    state.agent.speed = 14f;
+                    state.agent.speed = 26f;
 
                     // Bütün araçlar yolun orta asfaltındaki cadde hedefine yönelir.
                     // Birbirinin arkasında durma ve mesafe koruma işini UpdateGroundAgentMovement yapar.
@@ -355,14 +355,34 @@ namespace ZeroHour.Phase2.Units
             return 9.0f;
         }
 
-        private VehicleTestState GetNearestGroundVehicle(VehicleTestState current, out float distToOther)
+        private VehicleTestState GetVehicleAheadInMyPath(VehicleTestState current, out float distToAhead)
         {
-            distToOther = float.MaxValue;
+            distToAhead = float.MaxValue;
             if (current == null || current.obj == null) return null;
 
             Vector3 myPos = current.obj.transform.position;
             myPos.y = 0f;
-            VehicleTestState nearest = null;
+
+            // Aracımızın gitmek istediği yön
+            Vector3 myMoveDir;
+            if (current.agent != null && current.agent.hasPath && current.agent.desiredVelocity.sqrMagnitude > 0.1f)
+            {
+                myMoveDir = current.agent.desiredVelocity;
+            }
+            else
+            {
+                myMoveDir = current.obj.transform.forward;
+            }
+            myMoveDir.y = 0f;
+
+            if (myMoveDir.sqrMagnitude < 0.01f)
+            {
+                myMoveDir = current.obj.transform.forward;
+                myMoveDir.y = 0f;
+            }
+
+            myMoveDir.Normalize();
+            VehicleTestState closestAhead = null;
 
             foreach (var other in vehicleStates)
             {
@@ -370,15 +390,24 @@ namespace ZeroHour.Phase2.Units
 
                 Vector3 otherPos = other.obj.transform.position;
                 otherPos.y = 0f;
-                float d = Vector3.Distance(myPos, otherPos);
-                if (d < distToOther)
+
+                Vector3 toOther = otherPos - myPos;
+                float d = toOther.magnitude;
+
+                // Aracın ön görüş konisinde mi? (dot > 0.25f, yani yaklaşık ön 75 derecelik açı)
+                // Arkamızdaki veya ters yönde kalan araçlar için ASLA fren yapmıyoruz (Deadlock'ı çözer!)
+                float dot = Vector3.Dot(myMoveDir, toOther.normalized);
+                if (dot > 0.25f)
                 {
-                    distToOther = d;
-                    nearest = other;
+                    if (d < distToAhead)
+                    {
+                        distToAhead = d;
+                        closestAhead = other;
+                    }
                 }
             }
 
-            return nearest;
+            return closestAhead;
         }
 
         private void UpdateGroundAgentMovement(VehicleTestState state)
@@ -386,9 +415,9 @@ namespace ZeroHour.Phase2.Units
             NavMeshAgent agent = state.agent;
             if (agent == null || !agent.isOnNavMesh) return;
 
-            // En yakın diğer karadaki aracı bul (mesafe ve referans)
-            VehicleTestState nearestOther = GetNearestGroundVehicle(state, out float distToOther);
-            float safeDistToNearest = (nearestOther != null) ? GetSafeDistance(state.obj, nearestOther.obj) : 10.5f;
+            // Sadece hareket yönümüzün ÖNÜNDE kalan aracı kontrol et
+            VehicleTestState aheadVehicle = GetVehicleAheadInMyPath(state, out float distToAhead);
+            float safeDistToAhead = (aheadVehicle != null) ? GetSafeDistance(state.obj, aheadVehicle.obj) : 10.5f;
 
             Vector3 roadTarget = GetRoadTarget();
             Vector3 myPos = state.obj.transform.position;
@@ -447,20 +476,16 @@ namespace ZeroHour.Phase2.Units
                 {
                     agent.isStopped = true;
                     agent.velocity = Vector3.zero;
-                    agent.ResetPath();
                     state.status = $"Hedefe vardı ({parkedAtTarget.IndexOf(state.obj) + 1}. Sırada bekliyor) ({Mathf.CeilToInt(waitDurationAtTarget - state.timer)}s)...";
                     state.timer += Time.deltaTime;
 
                     // KAZASIZ TERS SIRALI AYRILIŞ:
                     // Kuyrukta en arkadaki araç (en son gelen) ilk ayrılır, çünkü arkası tamamen açıktır!
-                    // 3. Sıradaki (en arkadaki): 0.0s gecikme ile yola çıkar
-                    // 2. Sıradaki (ortadaki): 2.0s gecikme ile yola çıkar
-                    // 1. Sıradaki (en öndeki): 4.0s gecikme ile yola çıkar
+                    // En arkadaki: 0.0s gecikme, bir öndeki: 2.0s gecikme, en öndeki: 4.0s gecikme
                     int myQueueIndex = parkedAtTarget.IndexOf(state.obj);
                     int totalParked = parkedAtTarget.Count;
                     float returnStagger = 0f;
 
-                    // Arkadan öne doğru sıralama:
                     int reverseIndex = (totalParked - 1) - myQueueIndex;
                     if (reverseIndex < 0) reverseIndex = 0;
                     returnStagger = reverseIndex * 2.0f;
@@ -472,17 +497,17 @@ namespace ZeroHour.Phase2.Units
                         state.status = "Üsse Geri Dönüyor (A*)...";
                         agent.ResetPath();
                         agent.isStopped = false;
-                        agent.speed = 14f;
+                        agent.speed = 26f;
                         agent.SetDestination(state.homePosition);
-                        Debug.Log($"<color=cyan>[A* Tester] {state.obj.name} hedeften ayrıldı, istasyonuna geri dönüyor.</color>");
+                        Debug.Log($"<color=cyan>[A* Tester] 🏁 {state.obj.name} hedeften ayrıldı, istasyonuna geri dönüyor.</color>");
                     }
                 }
                 else
                 {
-                    // SEYİR HALİNDE 360 DERECE ÇARPIŞMA ÖNLEME (Gidiş Yolu):
-                    if (nearestOther != null && distToOther < safeDistToNearest + 6.0f)
+                    // SEYİR HALİNDE ÖNDEKİ ARACI TAKİP VE ÇARPIŞMA ÖNLEME:
+                    if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f)
                     {
-                        if (distToOther <= safeDistToNearest)
+                        if (distToAhead <= safeDistToAhead)
                         {
                             // Güvenli mesafeden (10.5m) yakınsa TAM FREN (Öndekinin tamponuna asla girmez)
                             agent.isStopped = true;
@@ -490,42 +515,45 @@ namespace ZeroHour.Phase2.Units
                         }
                         else
                         {
-                            // Güvenli mesafe ile +6 metre arasında yumuşak takip gazı (Headway braking)
+                            // 10 metre aralıkta yüksek hızdan kademeli frenleme
                             agent.isStopped = false;
-                            float t = Mathf.Clamp01((distToOther - safeDistToNearest) / 6.0f);
-                            agent.speed = Mathf.Lerp(2.5f, 14f, t);
+                            float t = Mathf.Clamp01((distToAhead - safeDistToAhead) / 10.0f);
+                            agent.speed = Mathf.Lerp(6.0f, 26f, t);
                         }
                     }
                     else
                     {
-                        // Önü tamamen boş, normal kontrollü seyir hızı
+                        // Önü tamamen boş, tam hız acil müdahale
                         agent.isStopped = false;
-                        agent.speed = 14f;
+                        agent.speed = 26f;
                     }
                 }
             }
             else
             {
                 // DÖNÜŞ YOLUNDAYIZ:
-                if (nearestOther != null && distToOther <= safeDistToNearest)
+                if (aheadVehicle != null && distToAhead <= safeDistToAhead)
                 {
+                    // Sadece hareket yönümüzün ÖNÜNDE araç varsa dururuz (arkamızda kalan araçlar için asla durmayız!)
                     agent.isStopped = true;
                     agent.velocity = Vector3.zero;
                 }
-                else if (nearestOther != null && distToOther < safeDistToNearest + 6.0f)
+                else if (aheadVehicle != null && distToAhead < safeDistToAhead + 10.0f)
                 {
                     agent.isStopped = false;
-                    float t = Mathf.Clamp01((distToOther - safeDistToNearest) / 6.0f);
-                    agent.speed = Mathf.Lerp(2.5f, 14f, t);
+                    float t = Mathf.Clamp01((distToAhead - safeDistToAhead) / 10.0f);
+                    agent.speed = Mathf.Lerp(6.0f, 26f, t);
                 }
                 else
                 {
                     agent.isStopped = false;
-                    agent.speed = 14f;
+                    agent.speed = 26f;
                 }
 
                 // Kendi kapısına dönüş kontrolü
-                if (!agent.pathPending && (agent.remainingDistance <= agent.stoppingDistance || Vector3.Distance(state.obj.transform.position, state.homePosition) <= 2.5f))
+                Vector3 homeFlat = state.homePosition;
+                homeFlat.y = 0f;
+                if (!agent.pathPending && (agent.remainingDistance <= agent.stoppingDistance || Vector3.Distance(myPos, homeFlat) <= 2.5f))
                 {
                     state.finished = true;
                     state.status = "✅ Kapıya Döndü ve Park Etti";
@@ -533,7 +561,7 @@ namespace ZeroHour.Phase2.Units
                     agent.velocity = Vector3.zero;
                     state.obj.transform.position = state.homePosition;
                     state.obj.transform.rotation = state.homeRotation;
-                    Debug.Log($"<color=green>[A* Tester] {state.obj.name} kendi istasyonuna başarıyla geri dönüp park etti! ✅</color>");
+                    Debug.Log($"<color=green>[A* Tester] ✅ {state.obj.name} kendi istasyonuna başarıyla geri dönüp park etti!</color>");
                 }
             }
         }
