@@ -457,6 +457,14 @@ namespace ZeroHour.Phase2.Units
                 }
 
                 vehicleStates.Add(state);
+
+                // Görevdeyken yanıp sönen tepe lambası
+                EmergencyLightBar lightBar = v.GetComponent<EmergencyLightBar>();
+                if (lightBar == null)
+                {
+                    lightBar = v.AddComponent<EmergencyLightBar>();
+                    lightBar.Initialize(this, state.isHelicopter);
+                }
             }
 
             Debug.Log($"<color=cyan>[A* Tester] 4 ana araç teste bağlandı ({vehicleStates.Count} araç): Kazasız Konvoy Radarı ve Asfalt Cadde Park Sistemi aktif edildi.</color>");
@@ -578,6 +586,16 @@ namespace ZeroHour.Phase2.Units
         // ==========================================
         // SEVK (DISPATCH) API'Sİ — Kaza Dosyası buradan araç gönderir
         // ==========================================
+
+        /// <summary>Araç şu an görevde mi? (yolda, olay yerinde veya dönüşte) — tepe lambası için.</summary>
+        public bool IsVehicleOnMission(GameObject vehicle)
+        {
+            foreach (var s in vehicleStates)
+            {
+                if (s.obj == vehicle) return s.inMission;
+            }
+            return false;
+        }
 
         /// <summary>Bu tipte üssünde bekleyen (görevde olmayan) araç sayısı.</summary>
         public int GetAvailableCount(UnitType type)

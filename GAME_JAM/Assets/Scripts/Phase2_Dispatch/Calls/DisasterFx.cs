@@ -80,6 +80,56 @@ namespace ZeroHour.Phase2.Calls
                 case CallIncidentKind.Flood: BuildFlood(); break;
                 default: BuildUnrest(); break;
             }
+
+            BuildAudio();
+        }
+
+        // ---------- SES ----------
+        private AudioSource loopAudio;
+        private AudioSource oneShotAudio;
+        private float loopBaseVolume;
+
+        private void BuildAudio()
+        {
+            // Ani olay sesleri (gürleme, patlama) her yerden duyulur
+            oneShotAudio = gameObject.AddComponent<AudioSource>();
+            oneShotAudio.playOnAwake = false;
+            oneShotAudio.spatialBlend = 0f;
+
+            switch (report.kind)
+            {
+                case CallIncidentKind.Collapse:
+                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.8f);
+                    break;
+                case CallIncidentKind.GasExplosion:
+                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Explosion, 0.9f);
+                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.35f);
+                    break;
+            }
+
+            // Sürekli sesler 3D: kamera yaklaştıkça artar
+            AudioClip loop = null;
+            loopBaseVolume = 0.45f;
+            switch (report.kind)
+            {
+                case CallIncidentKind.Fire:
+                case CallIncidentKind.GasExplosion: loop = ProceduralCallAudio.Crackle; break;
+                case CallIncidentKind.Flood: loop = ProceduralCallAudio.Rain; loopBaseVolume = 0.35f; break;
+                case CallIncidentKind.Unrest: loop = ProceduralCallAudio.Alarm; loopBaseVolume = 0.3f; break;
+            }
+            if (loop == null) return;
+
+            loopAudio = gameObject.AddComponent<AudioSource>();
+            loopAudio.clip = loop;
+            loopAudio.loop = true;
+            loopAudio.playOnAwake = false;
+            loopAudio.spatialBlend = 0.75f;
+            loopAudio.rolloffMode = AudioRolloffMode.Linear;
+            loopAudio.minDistance = 40f;
+            loopAudio.maxDistance = 500f;
+            loopAudio.volume = loopBaseVolume;
+            loopAudio.time = Random.Range(0f, loop.length * 0.9f);
+            loopAudio.Play();
         }
 
         private Vector3 RoofLocal(float yOffset = 0f) => new Vector3(bounds.center.x, bounds.max.y + yOffset, bounds.center.z) - transform.position;
@@ -366,6 +416,8 @@ namespace ZeroHour.Phase2.Calls
         {
             float dt = Time.deltaTime;
 
+            if (stopping && loopAudio != null) loopAudio.volume = Mathf.MoveTowards(loopAudio.volume, 0f, dt * loopBaseVolume / 2f);
+
             // Titreyen ateş ışığı
             for (int i = 0; i < flickerLights.Count; i++)
             {
@@ -405,6 +457,7 @@ namespace ZeroHour.Phase2.Calls
                 nextAftershock = Time.time + Random.Range(8f, 14f);
                 BuildingShaker.Shake(report.building, 1.1f, 0.06f);
                 CameraShake.Shake(0.18f, 0.6f);
+                if (oneShotAudio != null) oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.35f);
                 if (aftershockDust != null) aftershockDust.Emit(Mathf.RoundToInt(12 * scale));
             }
         }

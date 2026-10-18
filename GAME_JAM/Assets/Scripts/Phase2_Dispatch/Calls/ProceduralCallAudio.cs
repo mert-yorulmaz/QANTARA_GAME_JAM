@@ -85,5 +85,85 @@ namespace ZeroHour.Phase2.Calls
             clip.SetData(data, 0);
             return clip;
         }
+
+        // ==========================================
+        // AFET SESLERİ (bir kez üretilip önbellekte tutulur)
+        // ==========================================
+
+        private static AudioClip rumble, explosion, crackle, rain, alarm;
+
+        /// <summary>Deprem gürlemesi: derin, yavaşça sönen uğultu (3 sn).</summary>
+        public static AudioClip Rumble => rumble != null ? rumble : (rumble = CreateNoiseClip("Procedural_QuakeRumble", 3f, 0.02f, 0.9f, 11, (t, d) => Mathf.Clamp01(t / 0.15f) * Mathf.Pow(1f - t / d, 1.5f) * (0.75f + 0.25f * Mathf.Sin(t * 37f))));
+
+        /// <summary>Patlama: sert başlangıç, kısa kuyruk (1.6 sn).</summary>
+        public static AudioClip Explosion => explosion != null ? explosion : (explosion = CreateNoiseClip("Procedural_Explosion", 1.6f, 0.06f, 1f, 23, (t, d) => Mathf.Clamp01(t / 0.005f) * Mathf.Exp(-t * 3.2f)));
+
+        /// <summary>Yangın çıtırtısı (döngü, 3 sn).</summary>
+        public static AudioClip Crackle => crackle != null ? crackle : (crackle = CreateCrackleClip());
+
+        /// <summary>Yağmur (döngü, 3 sn): sürekli hışırtı.</summary>
+        public static AudioClip Rain => rain != null ? rain : (rain = CreateNoiseClip("Procedural_Rain", 3f, 0.55f, 0.35f, 37, (t, d) => 1f));
+
+        /// <summary>Dükkan alarmı (döngü, 1 sn): iki tonlu bip.</summary>
+        public static AudioClip Alarm => alarm != null ? alarm : (alarm = CreateAlarmClip());
+
+        /// <param name="brightness">0 = çok boğuk (alçak geçiren), 1 = ham gürültü</param>
+        private static AudioClip CreateNoiseClip(string name, float duration, float brightness, float volume, int seed, System.Func<float, float, float> envelope)
+        {
+            int length = Mathf.CeilToInt(SampleRate * duration);
+            float[] data = new float[length];
+            System.Random rng = new System.Random(seed);
+            float lp = 0f, lp2 = 0f;
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                lp += (white - lp) * brightness;
+                lp2 += (lp - lp2) * brightness;
+                data[i] = Mathf.Clamp(lp2 * envelope(t, duration) * volume * (brightness < 0.1f ? 6f : 1f), -1f, 1f);
+            }
+            AudioClip clip = AudioClip.Create(name, length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateCrackleClip()
+        {
+            const float Duration = 3f;
+            int length = Mathf.CeilToInt(SampleRate * Duration);
+            float[] data = new float[length];
+            System.Random rng = new System.Random(5);
+            float roar = 0f;
+            float pop = 0f;
+            for (int i = 0; i < length; i++)
+            {
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                roar += (white - roar) * 0.04f;                    // alevin boğuk uğultusu
+                if (rng.NextDouble() < 0.0009) pop = 1f;          // rastgele çıtırtı
+                pop *= 0.985f;
+                data[i] = roar * 0.9f + white * pop * 0.5f;
+            }
+            AudioClip clip = AudioClip.Create("Procedural_FireCrackle", length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateAlarmClip()
+        {
+            const float Duration = 1f;
+            int length = Mathf.CeilToInt(SampleRate * Duration);
+            float[] data = new float[length];
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float freq = t < 0.5f ? 950f : 720f;
+                float local = Mathf.Repeat(t, 0.5f);
+                float env = Mathf.Clamp01(local / 0.01f) * Mathf.Clamp01((0.42f - local) / 0.02f);
+                data[i] = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * freq * t)) * 0.12f * env;
+            }
+            AudioClip clip = AudioClip.Create("Procedural_ShopAlarm", length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
     }
 }
