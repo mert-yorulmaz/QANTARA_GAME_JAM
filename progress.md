@@ -705,3 +705,14 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - VARDİYAYA BAŞLA → Faz 1 yüklendi (müzik %50 seviyede). Faz 2 karnesi → ANA MENÜ → menüye dönüldü (oyun hızı 1, imleç serbest). Hata yok.
 - Konsolda 2 video uyarısı: videonun H.264 profili ve renk bilgisi (zaman damgası düzeltiliyor, renk varsayılana düşüyor) — oynatmayı engellemez.
 - **Elle test edilmeli:** videonun normal oyunda dönmesi (MCP ile kare kare ilerletirken video oynamıyor), müzik ve tık sesinin duyulması, gerçek fare tıklamaları.
+
+---
+
+# 🔄 GÜNCELLEME 11.1 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 11.1"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi.
+
+## ✅ Ayarlar panelinde ANA MENÜ düğmesi
+- Her iki fazda ESC ile açılan ortak ayarlar paneline **ANA MENÜ / MAIN MENU** düğmesi eklendi (VARSAYILAN ile GERİ arasında). Oyun ortasında ilerleme kaybolacağı için **iki adımlı**: ilk tık yazıyı "EMİN MİSİN? / SURE?" yapar, 3 sn içinde ikinci tık ana menüye döner; süre dolarsa düğme eski hâline döner. Ana menünün kendisinde düğme gizlenir.
+- *Test:* Faz 2'de panel açıldı, 1. tık → onay, 2. tık → MainMenu (oyun hızı 1, panel kapalı); ana menüde düğme gizli. Hata yok. Faz 2 sahnesinde şehir yerinde.

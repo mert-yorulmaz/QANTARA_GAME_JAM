@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem.UI;
 using ZeroHour.Shared;
 
@@ -72,6 +73,15 @@ namespace ZeroHour.Phase2.UI
         [Tooltip("Sağ üstteki kapatma (X) butonu")]
         [SerializeField] private Button closeXButton;
 
+        [Header("--- 6. ANA MENÜYE DÖNÜŞ ---")]
+        [Tooltip("Oyundan ana menüye döner (ilerleme kaybolur: ilk tık onay ister). Ana menünün kendisinde gizlenir.")]
+        [SerializeField] private Button mainMenuButton;
+        [SerializeField] private TMP_Text mainMenuLabel;
+        [SerializeField] private string mainMenuScene = "MainMenu";
+        [SerializeField] private float confirmSeconds = 3f;
+
+        private float mainMenuConfirmUntil = -1f;
+
         // Ayar değerleri
         private float currentSoundVolume = 0.70f;
         private float currentMusicVolume = 0.50f;
@@ -134,6 +144,9 @@ namespace ZeroHour.Phase2.UI
             if (closeXButton != null)
                 closeXButton.onClick.AddListener(CloseSettings);
 
+            if (mainMenuButton != null)
+                mainMenuButton.onClick.AddListener(OnMainMenuClicked);
+
             UpdateAllUIElements();
 
             // Başlangıçta paneli kapalı tut (isteğe bağlı)
@@ -146,6 +159,13 @@ namespace ZeroHour.Phase2.UI
         private void Update()
         {
             // ESC tuşuna basıldığında Ayarlar panelini aç / kapat
+            // Onay süresi dolduysa düğme eski yazısına döner
+            if (mainMenuConfirmUntil >= 0f && Time.unscaledTime > mainMenuConfirmUntil)
+            {
+                mainMenuConfirmUntil = -1f;
+                UpdateMainMenuButton();
+            }
+
             if (IsEscapePressed() && !GamePause.EscapeConsumedThisFrame && !IsEscapeUsedByIncidentFile())
             {
                 ToggleSettings();
@@ -198,6 +218,7 @@ namespace ZeroHour.Phase2.UI
                     GamePause.IsMenuOpen = true;
                 }
                 settingsPanelRoot.SetActive(true);
+                mainMenuConfirmUntil = -1f;
                 UpdateAllUIElements();
             }
         }
@@ -284,6 +305,7 @@ namespace ZeroHour.Phase2.UI
 
             // Oyundaki tüm metinleri seçili dile çevir (0 = ENGLISH, 1 = TÜRKÇE)
             ZeroHour.Phase2.Calls.Loc.SetLanguage(currentLanguageIndex);
+            UpdateMainMenuButton();
         }
 
         // --- TAM EKRAN FONKSİYONLARI ---
@@ -331,6 +353,32 @@ namespace ZeroHour.Phase2.UI
 
             UpdateLanguageUI();
             UpdateFullscreenUI();
+            UpdateMainMenuButton();
+        }
+
+        // --- ANA MENÜYE DÖNÜŞ ---
+        private void OnMainMenuClicked()
+        {
+            // İlk tık onay ister (oyun ortasında ilerleme kaybolur), ikinci tık menüye döner
+            if (mainMenuConfirmUntil < 0f)
+            {
+                mainMenuConfirmUntil = Time.unscaledTime + confirmSeconds;
+                UpdateMainMenuButton();
+                return;
+            }
+
+            mainMenuConfirmUntil = -1f;
+            CloseSettings();
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(mainMenuScene);
+        }
+
+        private void UpdateMainMenuButton()
+        {
+            if (mainMenuButton == null) return;
+            mainMenuButton.gameObject.SetActive(SceneManager.GetActiveScene().name != mainMenuScene);
+            if (mainMenuLabel != null)
+                mainMenuLabel.text = ZeroHour.Phase2.Calls.Loc.T(mainMenuConfirmUntil >= 0f ? "SURE?" : "MAIN MENU");
         }
 
         private void SaveSettings()

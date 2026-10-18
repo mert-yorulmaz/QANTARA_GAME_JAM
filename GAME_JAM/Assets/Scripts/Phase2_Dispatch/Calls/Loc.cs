@@ -161,6 +161,7 @@ namespace ZeroHour.Phase2.Calls
             { "GRADE", "NOT" },
             { "PLAY AGAIN", "TEKRAR OYNA" },
             { "MAIN MENU", "ANA MENÜ" },
+            { "SURE?", "EMİN MİSİN?" },
 
             // Ana menü (oyunun adı SIGN çevrilmez)
             { "DISASTER CONTROL LINE", "AFET KONTROL HATTI" },

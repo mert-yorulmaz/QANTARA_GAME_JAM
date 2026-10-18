@@ -533,7 +533,7 @@ namespace ZeroHour.Phase2.Editor
         // Kod tarafından sürekli yazılan metinler (LocalizedText bunların üstüne yazmasın)
         private static readonly HashSet<string> DynamicTextNames = new HashSet<string>
         {
-            "Stamp", "CaseTab", "CallInfo", "Language", "Population", "TimeLeft", "Clock", "Stats", "Grade",
+            "Stamp", "CaseTab", "CallInfo", "Language", "Population", "TimeLeft", "Clock", "Stats", "Grade", "MainMenuLabel",
             "PhotoCaption", "Value_Incident", "Value_Address", "Value_Affected", "Value_Notes"
         };
 
@@ -1493,6 +1493,17 @@ namespace ZeroHour.Phase2.Editor
 
             Button defaults = NewButton("DefaultsButton", panel, 42, 728, 342, 816);
             FitInBox(NewText("Label", defaults.transform, "DEFAULTS", pixelFont, 40, HudLabel, 0, 0, 300, 88, TextAlignmentOptions.Center));
+            // Ana menüye dönüş: VARSAYILAN ile GERİ arasında, ince çerçeveli (çerçeve dört ince çizgi; hazır Outline efekti değil)
+            Button mainMenu = NewButton("MainMenuButton", panel, 396, 728, 796, 816);
+            float[][] edges = { new[] { 0f, 0f, 400f, 3f }, new[] { 0f, 85f, 400f, 88f }, new[] { 0f, 0f, 3f, 88f }, new[] { 397f, 0f, 400f, 88f } };
+            foreach (float[] e in edges)
+            {
+                Image line = NewImage("Frame", mainMenu.transform, null, HudHeader);
+                Place(line.rectTransform, e[0], e[1], e[2], e[3]);
+                line.raycastTarget = false;
+            }
+            TMP_Text mainMenuLabel = FitInBox(NewText("MainMenuLabel", mainMenu.transform, "MAIN MENU", pixelFont, 40, HudLabel, 0, 0, 400, 88, TextAlignmentOptions.Center));
+
             Button back = NewButton("BackButton", panel, 850, 728, 1078, 816);
             FitInBox(NewText("Label", back.transform, "BACK", pixelFont, 40, AcceptInk, 0, 0, 228, 88, TextAlignmentOptions.Center));
 
@@ -1512,6 +1523,8 @@ namespace ZeroHour.Phase2.Editor
             so.FindProperty("defaultsButton").objectReferenceValue = defaults;
             so.FindProperty("backButton").objectReferenceValue = back;
             so.FindProperty("closeXButton").objectReferenceValue = closeX;
+            so.FindProperty("mainMenuButton").objectReferenceValue = mainMenu;
+            so.FindProperty("mainMenuLabel").objectReferenceValue = mainMenuLabel;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             root.gameObject.SetActive(false);
