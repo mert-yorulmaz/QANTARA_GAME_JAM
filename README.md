@@ -7,6 +7,38 @@ Gündüz vardiyasında masa başında binaların denetim dosyalarını inceleyip
 
 ---
 
+## 🎮 Kontroller
+
+### 🔹 Faz 1 – Ofis ve Denetim Masası
+| Tuş / Girdi | İşlev |
+| :--- | :--- |
+| **W, A, S, D** | Karakteri hareket ettir / Yürü |
+| **Fare** | Etrafa bak |
+| **E** | Sandalyeye otur / kalk, mesai bitince kapıdan gece vardiyasına geç |
+| **Sol Tık** | Bilgisayar arayüzü etkileşimleri (klasörler, butonlar, kutucuklar) |
+| **Çift Tık** | Masaüstünde klasör aç |
+| **R** | Kural kitabını aç / kapat |
+| **ESC** | Bilgisayardan kalk, ayarlar formunu kapat |
+
+### 🔹 Faz 2 – Taktiksel Kriz Haritası
+| Tuş / Girdi | İşlev |
+| :--- | :--- |
+| **W, A, S, D / Yön Tuşları** | Taktiksel haritada kamerayı kaydırma (pan) |
+| **Fare Tekerleği** | Haritaya yaklaşma / uzaklaşma (zoom) |
+| **Sol Tık** | Haritadaki binalara tıklama, afet çağrısı detay panelini açma |
+| **Ekip Butonları (UI)** | İtfaiye, Ambulans, Polis veya Kurtarma Helikopteri sevk etme |
+| **Boşluk / Kapat Butonu** | Açık olan afet bildirim kartını kapatma |
+| **ACCEPT / DECLINE** | Sol alttaki çağrıyı kabul etme (3 sn dinlenir, haritada olay rozeti çıkar) / reddetme (5 sivil kaybı) |
+| **Olay Rozetine Sol Tık** | Haritadaki olay rozetine tıklayarak Kaza Dosyasını açma |
+| **Kaza Dosyası `[-]` / `[+]`** | Gönderilecek birim sayısını seçme (Polis, Ambulans, İtfaiye, Helikopter) |
+| **DISPATCH / DISMISS CALL** | Seçili birimleri olay yerine sevk etme / çağrıyı kapatma (yaralılar kaybedilir) |
+| **ESC / Dosya Dışına Tık** | Kaza Dosyasını cezasız kapatma |
+| **Helikopter `[+]` → Rol Bölmesi** | Her helikopter için ambulans / polis / itfaiye logosundan birini seçme (joker birim olarak atama) |
+| **Sol Üst Dişli / ESC** | Ayarlar menüsü (ses, müzik, dil, tam ekran); açıkken oyun durur |
+| **Sol Üst Sayaç** | Vardiyanın kalan süresi (3:00) ve oyun saati (02:00 → 05:00). Süre bitince karne açılır |
+
+---
+
 ## 📸 Oyun İçi Görseller ve Oynanış Adımları
 
 ### 1. Ana Menü (Main Menu)
