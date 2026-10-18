@@ -10,7 +10,7 @@ namespace ZeroHour.Phase2.Calls
         Collapse,      // marker_collapse -> Deprem çökmesi: Ambulans gerekir
         GasExplosion,  // marker_gas      -> İtfaiye gerekir
         Flood,         // marker_flood    -> Sel: çatıdan tahliye, Helikopter gerekir
-        Unrest         // marker_unrest   -> Yağma / asayiş: Polis gerekir
+        Unrest         // Sadece takip ihbarı: deprem / selden sonra aynı bölgeden "yağma var" (marker_unverified) -> Polis
     }
 
     public enum CallIncidentStatus
@@ -57,6 +57,11 @@ namespace ZeroHour.Phase2.Calls
         public int affected;
         public int injured;
         public bool urgent;
+
+        // Takip ihbarı: deprem / selden sonra aynı bölgeden gelen, doğrulanmamış ihbar (bir kısmı asılsız)
+        public bool isFollowUp;
+        public bool isScam;
+        public int originCaseNumber;
         public float timeRemaining;
         public float timeLimit;
 

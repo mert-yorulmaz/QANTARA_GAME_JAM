@@ -91,6 +91,14 @@ namespace ZeroHour.Phase2.Editor
             boardSo.FindProperty("gasMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_gas", new Color(1f, 0.45f, 0.15f), ExplosionIcon);
             boardSo.FindProperty("floodMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_flood", new Color(0.25f, 0.65f, 1f), WaveIcon);
             boardSo.FindProperty("unrestMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_unrest", new Color(0.66f, 0.42f, 1f), AlarmIcon);
+            // Yağma ana afet değil: sadece deprem / sel sonrası takip ihbarı (doğrulanmamış rozet, bir kısmı asılsız)
+            boardSo.FindProperty("unverifiedMarkerSprite").objectReferenceValue = LoadSprite("marker_unverified.png");
+            boardSo.FindProperty("labelFont").objectReferenceValue = pixelFont;
+            boardSo.FindProperty("fireWeight").floatValue = 25f;
+            boardSo.FindProperty("collapseWeight").floatValue = 35f;
+            boardSo.FindProperty("gasWeight").floatValue = 20f;
+            boardSo.FindProperty("floodWeight").floatValue = 20f;
+            boardSo.FindProperty("unrestWeight").floatValue = 0f;
             boardSo.FindProperty("maxActiveIncidents").intValue = 5;
             SerializedProperty excluded = boardSo.FindProperty("excludedBuildings");
             excluded.arraySize = stationBuildings.Count;
@@ -133,6 +141,7 @@ namespace ZeroHour.Phase2.Editor
             canvasObj.AddComponent<GraphicRaycaster>();
 
             BuildHud(canvasObj.transform, unitsPanel, populationPanel);
+            BuildPhoneFeed(canvasObj.transform);
             BuildCallCard(canvasObj.transform, calls, callAudio, ringingSprite, listeningSprite, fillSprite);
             BuildIncidentFile(canvasObj.transform, filePanel);
 
@@ -1041,7 +1050,7 @@ namespace ZeroHour.Phase2.Editor
 
             // Başlıklar
             TMP_Text caseTab = NewText("CaseTab", panel, "CASE #0147", pixelFont, 40, Ink, 60, 8, 450, 62, TextAlignmentOptions.Left);
-            NewText("Title", panel, "DAMAGE CONTROL LINE · INCIDENT FILE", pixelFont, 36, Ink, 62, 104, 1180, 160, TextAlignmentOptions.Left);
+            NewText("Title", panel, "DISASTER RESPONSE LINE · INCIDENT FILE", pixelFont, 36, Ink, 62, 104, 1180, 160, TextAlignmentOptions.Left);
             TMP_Text callInfo = NewText("CallInfo", panel, "Call 02:14 · Line 2", readFont, 30, InkMuted, 1100, 108, 1738, 158, TextAlignmentOptions.Right);
 
             TMP_Text stamp = NewText("Stamp", panel, "URGENT", pixelFont, 50, StampRed, 1432, 180, 1732, 270, TextAlignmentOptions.Center);
@@ -1231,6 +1240,69 @@ namespace ZeroHour.Phase2.Editor
             so.FindProperty("shiftDurationSeconds").floatValue = 180f;
             so.FindProperty("timeLeftText").objectReferenceValue = timeLeft;
             so.FindProperty("clockText").objectReferenceValue = clockText;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ==========================================
+        // TELEFON (sağ alt): olay günlüğü mesaj olarak düşer
+        // ==========================================
+
+        private static void BuildPhoneFeed(Transform canvas)
+        {
+            const float Width = 340f, Height = 500f;
+
+            // Gövde: Yağız stili koyu çerçeve
+            Image body = NewImage("PhoneFeed", canvas, null, HudPanelColor);
+            body.raycastTarget = false;
+            StylePanel(body, false);
+            RectTransform rt = body.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(1f, 0f);
+            rt.sizeDelta = new Vector2(Width, Height);
+            rt.anchoredPosition = new Vector2(-20f, 16f);
+
+            // Durum çubuğu: saat + sinyal çubukları, ortada hoparlör yarığı
+            TMP_Text clock = NewText("StatusClock", rt, "02:00", readFont, 18, HudLabel, 22, 12, 120, 38, TextAlignmentOptions.Left);
+            Image speaker = NewImage("Speaker", rt, null, HudBorderColor);
+            speaker.raycastTarget = false;
+            Place(speaker.rectTransform, Width * 0.5f - 34f, 20, Width * 0.5f + 34f, 28);
+            for (int i = 0; i < 4; i++)
+            {
+                Image signal = NewImage("Signal" + i, rt, null, HudLabel);
+                signal.raycastTarget = false;
+                float x0 = Width - 64f + i * 9f;
+                Place(signal.rectTransform, x0, 32f - 5f - i * 4f, x0 + 6f, 32f);
+            }
+
+            NewText("Header", rt, "MESSAGES", pixelFont, 24, HudHeader, 22, 44, Width - 22, 76, TextAlignmentOptions.Left);
+            Image headerLine = NewImage("HeaderLine", rt, null, HudBorderColor);
+            headerLine.raycastTarget = false;
+            Place(headerLine.rectTransform, 16, 80, Width - 16, 83);
+
+            // Ekran: taşan eski mesajlar üstten kırpılır
+            Image screen = NewImage("Screen", rt, null, new Color(0.11f, 0.115f, 0.12f, 1f));
+            screen.raycastTarget = false;
+            Place(screen.rectTransform, 14, 88, Width - 14, Height - 34);
+            screen.gameObject.AddComponent<RectMask2D>();
+
+            RectTransform content = NewRect("Content", screen.transform);
+            Stretch(content); // Mesaj balonlarını PhoneFeed alttan yukarı elle dizer
+
+            // Ana ekran çubuğu
+            Image homeBar = NewImage("HomeBar", rt, null, new Color(0.62f, 0.68f, 0.78f, 0.6f));
+            homeBar.raycastTarget = false;
+            Place(homeBar.rectTransform, Width * 0.5f - 50f, Height - 21, Width * 0.5f + 50f, Height - 16);
+
+            AudioSource audio = body.gameObject.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.spatialBlend = 0f;
+
+            PhoneFeed feed = body.gameObject.AddComponent<PhoneFeed>();
+            SerializedObject so = new SerializedObject(feed);
+            so.FindProperty("content").objectReferenceValue = content;
+            so.FindProperty("font").objectReferenceValue = readFont;
+            so.FindProperty("statusClockText").objectReferenceValue = clock;
+            so.FindProperty("audioSource").objectReferenceValue = audio;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

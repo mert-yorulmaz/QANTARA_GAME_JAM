@@ -202,10 +202,13 @@ namespace ZeroHour.Phase2.Calls
         private void FillTexts(IncidentReport report)
         {
             SetText(caseTabText, Loc.F("CASE #{0:0000}", report.caseNumber));
-            SetText(stampText, Loc.T(report.urgent ? "URGENT" : "ROUTINE"));
+            SetText(stampText, Loc.T(report.isFollowUp ? "UNVERIFIED" : report.urgent ? "URGENT" : "ROUTINE"));
             SetText(incidentValueText, IncidentBoard.LocalizedTitle(report));
             SetText(addressValueText, IncidentBoard.LocalizedAddress(report));
-            SetText(affectedValueText, Loc.F("{0} people · {1} injured", report.affected, report.injuredRemaining));
+            // Takip ihbarında sayı arayanın beyanıdır: asılsız mı gerçek mi, notlardan anlaşılır
+            SetText(affectedValueText, report.isFollowUp
+                ? Loc.F("Caller claims {0} injured", report.injured)
+                : Loc.F("{0} people · {1} injured", report.affected, report.injuredRemaining));
             SetText(notesValueText, IncidentBoard.LocalizedNotes(report));
             SetText(photoCaptionText, $"{IncidentBoard.LocalizedStreetShort(report)} · {report.callTime}");
         }

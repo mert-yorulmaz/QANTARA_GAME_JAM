@@ -25,12 +25,36 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private Sprite floodMarkerSprite;
         [SerializeField] private Sprite unrestMarkerSprite;
 
-        [Header("Afet Çeşitliliği (çıkma ağırlıkları)")]
-        [SerializeField] private float fireWeight = 30f;
-        [SerializeField] private float collapseWeight = 25f;
-        [SerializeField] private float gasWeight = 15f;
-        [SerializeField] private float floodWeight = 15f;
-        [SerializeField] private float unrestWeight = 15f;
+        [Header("Afet Çeşitliliği (çıkma ağırlıkları) — yağma ana afet değil, sadece takip ihbarı")]
+        [SerializeField] private float fireWeight = 25f;
+        [SerializeField] private float collapseWeight = 35f;
+        [SerializeField] private float gasWeight = 20f;
+        [SerializeField] private float floodWeight = 20f;
+        [SerializeField] private float unrestWeight = 0f;
+
+        [Header("Takip İhbarı (deprem / selden sonra aynı bölgeden 'yağma var')")]
+        [SerializeField] private Sprite unverifiedMarkerSprite;
+        [Tooltip("Deprem veya selden sonra takip ihbarı gelme ihtimali")]
+        [SerializeField, Range(0f, 1f)] private float followUpChance = 0.65f;
+        [SerializeField] private float followUpDelayMin = 18f;
+        [SerializeField] private float followUpDelayMax = 35f;
+        [Tooltip("Takip ihbarlarının asılsız (scam) olma oranı")]
+        [SerializeField, Range(0f, 1f)] private float scamChance = 0.35f;
+        [Tooltip("Polis asılsız ihbarı bu kadar sürede doğrular ve döner (sn)")]
+        [SerializeField] private float scamCheckSeconds = 6f;
+        [Tooltip("'ASILSIZ İHBAR' yazısı için font (kurulum atar)")]
+        [SerializeField] private TMPro.TMP_FontAsset labelFont;
+
+        private class PendingFollowUp
+        {
+            public Vector3 origin;
+            public int originCase;
+            public int streetIndex;
+            public float readyAt;
+        }
+
+        private readonly List<PendingFollowUp> pendingFollowUps = new List<PendingFollowUp>();
+        private float boardTime;
 
         [Header("Süre (çember): olay bu sürede çözülmezse kalan yaralılar kaybedilir (sn)")]
         [SerializeField] private float fireTimeLimit = 75f;
@@ -140,6 +164,21 @@ namespace ZeroHour.Phase2.Calls
             "Shops looted after the tremor. Crowd blocking the street, people injured.",
             "Panic at the shelter entrance. Fights breaking out, barricade on fire.",
             "Store alarm ringing, windows smashed. Residents afraid to leave the building."
+        };
+
+        // Takip ihbarı notları: gerçek ihbarda doğrulayan ayrıntı, asılsızda şüpheli işaret var (oyuncu ayırt edebilsin)
+        private static readonly string[] FollowUpRealNotes =
+        {
+            "Neighbors confirm smashed shop windows. A second caller reports the same street.",
+            "Store owner on the line, alarm clearly audible. Two people hurt by looters.",
+            "Residents of the damaged building report strangers carrying out their belongings."
+        };
+
+        private static readonly string[] FollowUpScamNotes =
+        {
+            "Caller refused to give a name and hung up. No other reports from the area.",
+            "Laughter in the background. The caller changed the address twice.",
+            "Anonymous text message only. Callback number does not exist."
         };
 
         private void Awake()
@@ -254,8 +293,153 @@ namespace ZeroHour.Phase2.Calls
             if (CityStatsManager.Instance != null) CityStatsManager.Instance.AddCiviliansAtRisk(report.injured);
 
             Debug.Log($"<color=orange>[Incidents] 📍 Case #{report.caseNumber}: {report.incidentTitle} @ {building.name} ({report.injured} yaralı)</color>");
+            Feed(FeedTone.Alert, null, "New case #{0}: {1} · {2} injured", report.caseNumber, Loc.T(report.incidentTitle), report.injured);
+            OnIncidentCreated?.Invoke(report);
+
+            // Deprem / selden sonra aynı bölgeden "yağma var" ihbarı gelebilir
+            if ((kind == CallIncidentKind.Collapse || kind == CallIncidentKind.Flood) && UnityEngine.Random.value < followUpChance)
+            {
+                pendingFollowUps.Add(new PendingFollowUp
+                {
+                    origin = report.sitePosition,
+                    originCase = report.caseNumber,
+                    streetIndex = streetIndex,
+                    readyAt = boardTime + UnityEngine.Random.Range(followUpDelayMin, followUpDelayMax)
+                });
+            }
+            return report;
+        }
+
+        // ==========================================
+        // TAKİP İHBARI (yağma, bir kısmı asılsız)
+        // ==========================================
+
+        /// <summary>Sırası gelmiş bir takip ihbarı var ve haritada yer var.</summary>
+        public bool FollowUpReady
+        {
+            get
+            {
+                if (!CanCreateIncident()) return false;
+                foreach (PendingFollowUp p in pendingFollowUps)
+                {
+                    if (p.readyAt <= boardTime) return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>Sırası gelen takip ihbarını, ilk afetin yakınındaki boş binada oluşturur.</summary>
+        public IncidentReport TryCreateFollowUp()
+        {
+            if (!CanCreateIncident()) return null;
+
+            PendingFollowUp pending = null;
+            foreach (PendingFollowUp p in pendingFollowUps)
+            {
+                if (p.readyAt <= boardTime) { pending = p; break; }
+            }
+            if (pending == null) return null;
+            pendingFollowUps.Remove(pending);
+
+            Transform building = NearestFreeBuilding(pending.origin);
+            if (building == null) return null;
+
+            Bounds bounds = CalculateBounds(building);
+            bool scam = UnityEngine.Random.value < scamChance;
+            int houseNumber = UnityEngine.Random.Range(2, 99);
+            string street = Streets[pending.streetIndex];
+            int claimed = UnityEngine.Random.Range(1, 4); // İhbarda söylenen yaralı sayısı (asılsızda gerçek değil)
+            CallIncidentKind kind = CallIncidentKind.Unrest;
+            string[] pool = scam ? FollowUpScamNotes : FollowUpRealNotes;
+
+            IncidentReport report = new IncidentReport
+            {
+                caseNumber = nextCaseNumber++,
+                kind = kind,
+                isFollowUp = true,
+                isScam = scam,
+                originCaseNumber = pending.originCase,
+                building = building,
+                buildingBounds = bounds,
+                sitePosition = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z),
+                markerAnchor = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z),
+                incidentTitle = "Looting report (unverified)",
+                possibleUnitsText = "Possible units: " + PossibleUnitsFor(kind),
+                address = $"{houseNumber} {street}",
+                streetShort = ShortStreet(street),
+                streetIndex = pending.streetIndex,
+                houseNumber = houseNumber,
+                notes = pool[UnityEngine.Random.Range(0, pool.Length)],
+                callTime = GetClockTime(),
+                line = UnityEngine.Random.Range(1, 5),
+                injured = claimed,
+                affected = claimed + UnityEngine.Random.Range(1, 4),
+                urgent = false,
+                timeRemaining = unrestTimeLimit,
+                timeLimit = unrestTimeLimit,
+                injuredRemaining = scam ? 0 : claimed,
+                workRequired = scam ? scamCheckSeconds : unrestWorkSeconds
+            };
+
+            if (markerPrefab != null)
+            {
+                IncidentMarker marker = Instantiate(markerPrefab, report.markerAnchor, Quaternion.identity, transform);
+                marker.name = $"IncidentMarker_{report.caseNumber}";
+                marker.Initialize(report, unverifiedMarkerSprite != null ? unverifiedMarkerSprite : MarkerFor(kind));
+                report.marker = marker;
+            }
+
+            // Efekt yok: doğrulanmamış ihbar haritada belli olmaz; gerçekse ekip varınca alarm / barikat çıkar
+            activeIncidents.Add(report);
+            if (!scam && CityStatsManager.Instance != null) CityStatsManager.Instance.AddCiviliansAtRisk(report.injured);
+
+            Debug.Log($"<color=orange>[Incidents] 📍 Case #{report.caseNumber}: takip ihbarı (#{report.originCaseNumber} sonrası, {(scam ? "ASILSIZ" : "gerçek")}) @ {building.name}</color>");
+            Feed(FeedTone.Alert, null, "Case #{0}: looting reported near case #{1} (unverified)", report.caseNumber, report.originCaseNumber);
             OnIncidentCreated?.Invoke(report);
             return report;
+        }
+
+        /// <summary>Sağ alttaki telefona olay mesajı (İngilizce anahtar, seçili dilde yazılır).</summary>
+        private static void Feed(FeedTone tone, string key, string englishFormat, params object[] args)
+        {
+            PhoneFeed.Post(Loc.F(englishFormat, args), tone, key);
+        }
+
+        private static string UnitName(UnitType type)
+        {
+            switch (type)
+            {
+                case UnitType.FireEngine: return Loc.T("Fire Truck");
+                case UnitType.PoliceCruiser: return Loc.T("Police");
+                case UnitType.RescueHelicopter: return Loc.T("Helicopter");
+                default: return Loc.T("Ambulance");
+            }
+        }
+
+        private Transform NearestFreeBuilding(Vector3 origin)
+        {
+            Transform best = null;
+            float bestDist = float.MaxValue;
+            foreach (Transform b in candidateBuildings)
+            {
+                if (b == null) continue;
+                bool used = false;
+                foreach (IncidentReport r in activeIncidents)
+                {
+                    if (r.building == b) { used = true; break; }
+                }
+                if (used) continue;
+
+                float d = (b.position - origin).sqrMagnitude;
+                if (d < bestDist) { bestDist = d; best = b; }
+            }
+            return best;
+        }
+
+        /// <summary>Olay yerinin üstünde kısa süre yükselip sönen yazı (ASILSIZ İHBAR / YAĞMA DOĞRULANDI).</summary>
+        private void ShowSiteLabel(IncidentReport r, string english, Color color)
+        {
+            FloatingLabel.Spawn(r.markerAnchor, Loc.T(english), color, labelFont);
         }
 
         // ==========================================
@@ -270,7 +454,7 @@ namespace ZeroHour.Phase2.Calls
             if ((roll -= collapseWeight) < 0f) return CallIncidentKind.Collapse;
             if ((roll -= gasWeight) < 0f) return CallIncidentKind.GasExplosion;
             if ((roll -= floodWeight) < 0f) return CallIncidentKind.Flood;
-            return CallIncidentKind.Unrest;
+            return unrestWeight > 0f ? CallIncidentKind.Unrest : CallIncidentKind.Collapse;
         }
 
         private static string TitleFor(CallIncidentKind kind)
@@ -430,6 +614,7 @@ namespace ZeroHour.Phase2.Calls
         private void Update()
         {
             float dt = Time.deltaTime;
+            boardTime += dt;
             for (int i = activeIncidents.Count - 1; i >= 0; i--)
             {
                 IncidentReport r = activeIncidents[i];
@@ -453,11 +638,19 @@ namespace ZeroHour.Phase2.Calls
                     }
                 }
 
+                // Asılsız ihbarda kimse yok: ölüm yok, süre dolunca sessizce kapanır
+                if (r.isScam)
+                {
+                    if (r.timeRemaining <= 0f) FailIncident(r);
+                    continue;
+                }
+
                 // Zamanla kayıp: yardım gelene kadar yaralılar ölebilir
                 ApplyDeaths(r, dt);
                 if (r.injuredRemaining <= 0)
                 {
                     Debug.Log($"<color=red>[Incidents] ☠️ Case #{r.caseNumber}: kurtarılacak kimse kalmadı ({r.deaths} kayıp).</color>");
+                    Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: no survivors left · {1} lost", r.caseNumber, r.deaths);
                     CloseIncident(r);
                     continue;
                 }
@@ -505,6 +698,7 @@ namespace ZeroHour.Phase2.Calls
                 r.injuredRemaining--;
                 r.deaths++;
                 if (CityStatsManager.Instance != null) CityStatsManager.Instance.RegisterCasualty(1);
+                Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: {1} lost so far, {2} still trapped", r.caseNumber, r.deaths, r.injuredRemaining);
             }
         }
 
@@ -518,16 +712,26 @@ namespace ZeroHour.Phase2.Calls
 
                 if (AStarMovementTester.Instance != null && unit.vehicle != null) AStarMovementTester.Instance.ReleaseVehicle(unit.vehicle);
                 r.onSiteUnits.RemoveAt(i);
+                Feed(FeedTone.Neutral, null, "Case #{0}: helicopter out of fuel, returning to base", r.caseNumber);
             }
         }
 
         private void FailIncident(IncidentReport r)
         {
+            if (r.isScam)
+            {
+                Debug.Log($"<color=grey>[Incidents] Case #{r.caseNumber}: asılsız ihbar zaman aşımına uğradı (kayıp yok).</color>");
+                Feed(FeedTone.Neutral, null, "Case #{0}: report expired, nobody called back", r.caseNumber);
+                CloseIncident(r);
+                return;
+            }
+
             int lost = r.injuredRemaining;
             r.injuredRemaining = 0;
             r.deaths += lost;
             if (CityStatsManager.Instance != null && lost > 0) CityStatsManager.Instance.RegisterCasualty(lost);
             Debug.Log($"<color=red>[Incidents] ⏱️ Case #{r.caseNumber}: süre doldu. Toplam {r.deaths} kayıp.</color>");
+            Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: time ran out · {1} lost", r.caseNumber, r.deaths);
             CloseIncident(r);
         }
 
@@ -609,15 +813,25 @@ namespace ZeroHour.Phase2.Calls
             if (report.marker != null && report.onSiteUnits.Count == 0) report.marker.SetResponding();
 
             Debug.Log($"<color=cyan>[Incidents] 🚨 Case #{report.caseNumber}: {sent} birim sevk edildi.</color>");
+            Feed(FeedTone.Info, null, "Case #{0}: {1} unit(s) dispatched", report.caseNumber, sent);
             return sent;
         }
 
-        /// <summary>Kaza dosyasındaki DISMISS CALL: olay yanıtsız kapanır, yaralılar kaybedilir.</summary>
+        /// <summary>Kaza dosyasındaki DISMISS CALL: olay yanıtsız kapanır, yaralılar kaybedilir (asılsız ihbarda ceza yok).</summary>
         public void Dismiss(IncidentReport report)
         {
             if (report == null || report.status != CallIncidentStatus.Waiting) return;
 
+            if (report.isScam)
+            {
+                Debug.Log($"<color=grey>[Incidents] Case #{report.caseNumber}: asılsız ihbar reddedildi (doğru karar).</color>");
+                Feed(FeedTone.Neutral, null, "Case #{0} dismissed", report.caseNumber);
+                CloseIncident(report);
+                return;
+            }
+
             if (CityStatsManager.Instance != null && report.injuredRemaining > 0) CityStatsManager.Instance.OnCallDismissed(report.injuredRemaining);
+            Feed(FeedTone.Loss, null, "Case #{0} dismissed · {1} lost", report.caseNumber, report.injuredRemaining);
             report.deaths += report.injuredRemaining;
             report.injuredRemaining = 0;
             CloseIncident(report);
@@ -645,7 +859,16 @@ namespace ZeroHour.Phase2.Calls
                     isHelicopter = type == UnitType.RescueHelicopter,
                     arrivedAtElapsed = r.elapsed
                 });
+                if (r.status == CallIncidentStatus.Responding) Feed(FeedTone.Info, null, "Case #{0}: first unit on scene", r.caseNumber);
                 r.status = CallIncidentStatus.Working;
+
+                // Takip ihbarı ilk ekip varınca doğrulanır: gerçekse yağma görünür hale gelir
+                if (r.isFollowUp && !r.isScam && r.effects == null)
+                {
+                    r.effects = DisasterFx.Spawn(r);
+                    ShowSiteLabel(r, "LOOTING CONFIRMED", new Color(1f, 0.55f, 0.2f));
+                    Feed(FeedTone.Alert, null, "Case #{0}: looting confirmed · {1} injured", r.caseNumber, r.injuredRemaining);
+                }
                 return;
             }
         }
@@ -654,12 +877,23 @@ namespace ZeroHour.Phase2.Calls
         {
             CityStatsManager stats = CityStatsManager.Instance;
 
+            if (report.isScam)
+            {
+                // Ekip boşuna gitti: kayıp yok ama o araçlar bu süre boyunca başka yerde çalışamadı
+                ShowSiteLabel(report, "FALSE ALARM", new Color(0.75f, 0.75f, 0.75f));
+                Debug.Log($"<color=grey>[Incidents] Case #{report.caseNumber}: ASILSIZ İHBAR. Ekip boşuna gitti.</color>");
+                Feed(FeedTone.Neutral, null, "Case #{0}: FALSE ALARM · units returning", report.caseNumber);
+                CloseIncident(report);
+                return;
+            }
+
             int remaining = report.injuredRemaining;
             if (report.sentRoles.Contains(report.RequiredUnit))
             {
                 // Doğru ekip, süre bitmeden: hayatta kalan yaralıların hepsi kurtarıldı
                 if (stats != null) stats.ResolveCiviliansAtRisk(remaining);
                 Debug.Log($"<color=green>[Incidents] ✅ Case #{report.caseNumber} çözüldü. {remaining} sivil kurtarıldı, {report.deaths} kayıp.</color>");
+                Feed(FeedTone.Success, null, "Case #{0} resolved · {1} rescued, {2} lost", report.caseNumber, remaining, report.deaths);
             }
             else
             {
@@ -672,6 +906,7 @@ namespace ZeroHour.Phase2.Calls
                     stats.ResolveCiviliansAtRisk(remaining - lost);
                 }
                 Debug.Log($"<color=orange>[Incidents] ⚠️ Case #{report.caseNumber}: gerekli ekip ({report.RequiredUnit}) gelmedi. {lost} sivil daha kaybedildi.</color>");
+                Feed(FeedTone.Loss, null, "Case #{0}: wrong team, no {1} sent · {2} more lost", report.caseNumber, UnitName(report.RequiredUnit), lost);
             }
             report.injuredRemaining = 0;
 

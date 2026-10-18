@@ -509,3 +509,38 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 ## ⚠️ Bilinmesi Gerekenler
 - Kuyruktaki son araç olay yerinden ayrıldıktan sonra gelen takviye, olay yerine varınca 1–2 sn içinde park eder (takılma kurtarıcısı üzerinden).
 - Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, sesler.
+
+---
+---
+
+# 🔄 GÜNCELLEME 9 — 18 Ekim 2026, ~08:30 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 9"DUR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+> Kullanıcı istekleri: temaya uymayan afet olmasın (afet lazım, "hasar kontrol" değil); depremden sonra aynı yerden "yağma var" ihbarı gelsin → polis; bu ihbarların bir kısmı asılsız (scam) olsun; depremin sesi yok, olsun; konsoldaki faydalı bilgiler (sevk, yaralı, kayıp, kurtarılan) sağ altta telefonda mesaj gibi gösterilsin.
+
+## ✅ Yapılanlar (Play Mode'da Test Edildi)
+
+1. **Yağma artık ana afet değil.** Rastgele afetler: deprem göçüğü (en sık, %35), yangın %25, gaz patlaması %20, sel %20.
+2. **Takip ihbarı.** Deprem veya selden sonra (%65 ihtimal) 18–35 sn içinde aynı sokaktan, ilk olaya en yakın boş binadan "Yağma ihbarı (doğrulanmamış)" çağrısı gelir. Sırası gelince telefon en geç 4 sn içinde çalar. Rozet: Yağız'ın `marker_unverified` ("?") simgesi. Dosyada damga **TEYİTSİZ**, etkilenen satırı "Arayan N yaralı olduğunu söylüyor".
+3. **Asılsız ihbar (%35).** Notlarda ipucu var: gerçek ihbarda doğrulayan ayrıntı (komşular doğruluyor, dükkan sahibi hatta, alarm duyuluyor), asılsızda şüpheli işaret (isim vermedi, arka planda gülüşme, geri arama numarası yok). Sonuçlar:
+   - Asılsıza polis gönderilirse: kayıp yok, ekip ~6 sn bakıp döner, olay yerinde **ASILSIZ İHBAR** yazısı — ceza, araçların o süre başka yerde çalışamaması.
+   - Asılsızı reddetmek: cezasız (doğru karar). Asılsız ihbar süre dolunca da kayıpsız kapanır.
+   - Gerçeği reddetmek: yaralılar kaybedilir. Gerçek ihbara ilk ekip varınca **YAĞMA DOĞRULANDI** yazısı + alarm / barikat efekti çıkar (efekt önceden görünmez ki asılsızla ayırt edilmesin).
+4. **Deprem sesi.** Eski gürleme çok alçak frekanslıydı (laptop hoparlöründe duyulmuyordu). Yeni 2.8 sn'lik ses: derin gürleme + duyulabilir taş sürtünmesi bandı + düşen moloz tıkırtıları, normalize edilmiş. Göçükte tam ses, artçı sarsıntılarda %45.
+5. **Telefon (sağ alt).** Olay günlüğü mesaj balonları olarak düşer, kısa "bip" sesiyle: yeni vaka (turuncu), sevk / ilk ekip olay yerinde (mavi), çözüldü + kurtarılan / kayıp (yeşil), kayıp / süre doldu / yanlış ekip / reddedilen-cevapsız çağrı (kırmızı), asılsız ihbar / helikopter yakıtı bitti (gri). Aynı vakanın artan kayıp sayısı aynı balonda güncellenir. En yeni altta, en fazla 6 mesaj, eskiler soluklaşır ve üstten kırpılır. Türkçe / İngilizce.
+6. **Kaza Dosyası başlığı** "HASAR KONTROL HATTI" → "AFET MÜDAHALE HATTI" (İng. "DISASTER RESPONSE LINE").
+
+## 🐞 Test Sırasında Bulunup Düzeltilen
+- "DOĞRULANMADI" damgası panelden taşıyordu → "TEYİTSİZ".
+- Olay yeri yazısı rozetin / binaların arkasında kalıyordu → rozetin üstünde, her zaman önde çiziliyor.
+- Telefonda balonlar ekran dolunca sıkışıp saat satırı yazıya biniyordu → balonlar elle diziliyor.
+
+## 🧪 Test
+- Zorlanmış senaryolar: asılsız + polis (12.9 sn'de kayıpsız kapandı), gerçek + polis (çözüldü, 0 kayıp, efekt + yazı çıktı), asılsızı reddet (0 kayıp), gerçeği reddet (2 kayıp), asılsız zaman aşımı (60 sn, 0 kayıp), harita doluyken takip ihbarı bekletiliyor.
+- Telefon akışıyla doğal oyun: takip ihbarları çağrı olarak geldi. Tam 180 sn vardiya (otomatik oyuncu) → karne A, derleme ve oyun **0 hata**.
+- Not: Unity kare kare test ederken "JobTempAlloc" / "dt > 0" editör uyarıları verdi; normal oynanışla ilgisiz.
+
+## ⚠️ Bilinmesi Gerekenler
+- Elle test edilmesi gerekenler: gerçek fare tıklaması, sesler (yeni deprem sesi + telefon bip'i dahil).
+- `UnityConnectSettings.asset` hâlâ commit'lenmedi (karar sizde).

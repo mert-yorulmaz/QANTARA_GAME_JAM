@@ -73,6 +73,9 @@ namespace ZeroHour.Phase2.Calls
             {
                 case CallState.Idle:
                     timer -= Time.deltaTime;
+
+                    // Deprem / sel sonrası takip ihbarı sırası geldiyse telefon kısa süre içinde çalar
+                    if (timer > 4f && IncidentBoard.Instance != null && IncidentBoard.Instance.FollowUpReady) timer = 4f;
                     if (timer <= 0f)
                     {
                         // Kaza dosyası açıkken telefon çalmaz; kapasite / boş bina yoksa çağrı ertelenir
@@ -101,7 +104,7 @@ namespace ZeroHour.Phase2.Calls
                     if (timer >= ringTimeout)
                     {
                         Debug.Log("<color=orange>[Calls] 📵 Çağrı cevapsız kaldı.</color>");
-                        DeclineCall();
+                        PenalizeAndEnd("Missed call · {0} people left without help");
                     }
                     break;
 
@@ -162,14 +165,25 @@ namespace ZeroHour.Phase2.Calls
         public void DeclineCall()
         {
             if (state != CallState.Ringing) return;
+            PenalizeAndEnd("Call declined · {0} people left without help");
+        }
 
+        private void PenalizeAndEnd(string feedFormat)
+        {
             if (CityStatsManager.Instance != null) CityStatsManager.Instance.OnCallDismissed(declinePenalty);
+            PhoneFeed.Post(Loc.F(feedFormat, declinePenalty), FeedTone.Loss);
             EndCall();
         }
 
         private void FinishListening()
         {
-            if (IncidentBoard.Instance != null) IncidentBoard.Instance.CreateRandomIncident();
+            IncidentBoard board = IncidentBoard.Instance;
+            if (board != null)
+            {
+                // Önce sırası gelen takip ihbarı ("yağma var"), yoksa yeni afet
+                IncidentReport report = board.FollowUpReady ? board.TryCreateFollowUp() : null;
+                if (report == null) board.CreateRandomIncident();
+            }
             EndCall();
         }
 

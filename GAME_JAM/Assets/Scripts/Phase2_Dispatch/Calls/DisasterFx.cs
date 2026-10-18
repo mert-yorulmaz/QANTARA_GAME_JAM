@@ -102,7 +102,8 @@ namespace ZeroHour.Phase2.Calls
             switch (report.kind)
             {
                 case CallIncidentKind.Collapse:
-                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.8f);
+                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Earthquake, 1f);
+                    oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.6f);
                     break;
                 case CallIncidentKind.GasExplosion:
                     oneShotAudio.PlayOneShot(ProceduralCallAudio.Explosion, 0.9f);
@@ -469,7 +470,7 @@ namespace ZeroHour.Phase2.Calls
                 nextAftershock = Time.time + Random.Range(8f, 14f);
                 BuildingShaker.Shake(report.building, 1.1f, 0.06f);
                 CameraShake.Shake(0.18f, 0.6f);
-                if (oneShotAudio != null) oneShotAudio.PlayOneShot(ProceduralCallAudio.Rumble, 0.35f);
+                if (oneShotAudio != null) oneShotAudio.PlayOneShot(ProceduralCallAudio.Earthquake, 0.45f);
                 if (aftershockDust != null) aftershockDust.Emit(Mathf.RoundToInt(12 * scale));
             }
         }

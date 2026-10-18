@@ -90,7 +90,32 @@ namespace ZeroHour.Phase2.Calls
         // AFET SESLERİ (bir kez üretilip önbellekte tutulur)
         // ==========================================
 
-        private static AudioClip rumble, explosion, crackle, rain, alarm;
+        private static AudioClip rumble, explosion, crackle, rain, alarm, earthquake, notify;
+
+        /// <summary>Telefona mesaj düştü: kısa iki tonlu bip (0.2 sn).</summary>
+        public static AudioClip Notify => notify != null ? notify : (notify = CreateNotifyClip());
+
+        private static AudioClip CreateNotifyClip()
+        {
+            const float Duration = 0.2f;
+            int length = Mathf.CeilToInt(SampleRate * Duration);
+            float[] data = new float[length];
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float local = t < 0.09f ? t : t - 0.1f;
+                if (t >= 0.09f && t < 0.1f) continue;
+                float freq = t < 0.09f ? 880f : 1320f;
+                float env = Mathf.Clamp01(local / 0.005f) * Mathf.Exp(-local * 28f);
+                data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.5f * env;
+            }
+            AudioClip clip = AudioClip.Create("Procedural_PhoneNotify", length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        /// <summary>Deprem: duyulabilir gürleme + taş sürtünmesi + düşen moloz tıkırtıları (2.8 sn). Laptop hoparlöründe de duyulur.</summary>
+        public static AudioClip Earthquake => earthquake != null ? earthquake : (earthquake = CreateEarthquakeClip());
 
         /// <summary>Deprem gürlemesi: derin, hızla sönen uğultu (1.6 sn).</summary>
         public static AudioClip Rumble => rumble != null ? rumble : (rumble = CreateNoiseClip("Procedural_QuakeRumble", 1.6f, 0.02f, 0.9f, 11, (t, d) => Mathf.Clamp01(t / 0.08f) * Mathf.Pow(1f - t / d, 1.8f) * (0.75f + 0.25f * Mathf.Sin(t * 37f))));
@@ -144,6 +169,58 @@ namespace ZeroHour.Phase2.Calls
                 data[i] = roar * 0.9f + white * pop * 0.5f;
             }
             AudioClip clip = AudioClip.Create("Procedural_FireCrackle", length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateEarthquakeClip()
+        {
+            const float Duration = 2.8f;
+            int length = Mathf.CeilToInt(SampleRate * Duration);
+            float[] data = new float[length];
+            System.Random rng = new System.Random(71);
+
+            float deep = 0f, deep2 = 0f;      // derin gürleme (büyük hoparlörler için)
+            float midHi = 0f, midLo = 0f;     // 100–500 Hz bandı: küçük hoparlörde duyulan "homurtu"
+            float wobble = 0f, wobbleTarget = 1f;
+            float clack = 0f, clackLp = 0f;   // moloz tıkırtısı
+            float peak = 0f;
+
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float white = (float)rng.NextDouble() * 2f - 1f;
+
+                deep += (white - deep) * 0.012f;
+                deep2 += (deep - deep2) * 0.012f;
+
+                midHi += (white - midHi) * 0.11f;
+                midLo += (white - midLo) * 0.018f;
+                float grind = midHi - midLo;
+
+                // Düzensiz sarsıntı dalgaları
+                if (i % 900 == 0) wobbleTarget = 0.45f + (float)rng.NextDouble() * 0.75f;
+                wobble += (wobbleTarget - wobble) * 0.0015f;
+
+                // Ortada yoğunlaşan, rastgele düşen moloz
+                float clackDensity = 0.0012f * Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / Duration));
+                if (rng.NextDouble() < clackDensity) clack = 0.6f + (float)rng.NextDouble() * 0.4f;
+                clack *= 0.9965f;
+                clackLp += (white * clack - clackLp) * 0.3f;
+
+                // Zarf: hızlı yükseliş, 0.7 sn'de tepe, uzun sönüş
+                float env = Mathf.Clamp01(t / 0.25f) * Mathf.Pow(Mathf.Clamp01(1f - (t - 0.7f) / (Duration - 0.7f)), t > 0.7f ? 1.4f : 0f);
+
+                float s = (deep2 * 9f + grind * 2.2f) * wobble * env + clackLp * 0.55f;
+                data[i] = s;
+                peak = Mathf.Max(peak, Mathf.Abs(s));
+            }
+
+            // Normalleştir: her sistemde aynı yükseklikte
+            float gain = peak > 0.0001f ? 0.92f / peak : 1f;
+            for (int i = 0; i < length; i++) data[i] *= gain;
+
+            AudioClip clip = AudioClip.Create("Procedural_Earthquake", length, 1, SampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

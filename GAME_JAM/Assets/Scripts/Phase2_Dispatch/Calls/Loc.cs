@@ -65,7 +65,8 @@ namespace ZeroHour.Phase2.Calls
             { "Caller is speaking...", "Arayan konuşuyor..." },
 
             // Kaza Dosyası
-            { "DAMAGE CONTROL LINE · INCIDENT FILE", "HASAR KONTROL HATTI · OLAY DOSYASI" },
+            { "DAMAGE CONTROL LINE · INCIDENT FILE", "AFET MÜDAHALE HATTI · OLAY DOSYASI" },
+            { "DISASTER RESPONSE LINE · INCIDENT FILE", "AFET MÜDAHALE HATTI · OLAY DOSYASI" },
             { "CASE #{0:0000}", "VAKA #{0:0000}" },
             { "INCIDENT", "OLAY" },
             { "ADDRESS", "ADRES" },
@@ -112,6 +113,39 @@ namespace ZeroHour.Phase2.Calls
             { "Shops looted after the tremor. Crowd blocking the street, people injured.", "Sarsıntıdan sonra dükkanlar yağmalandı. Kalabalık sokağı kapattı, yaralılar var." },
             { "Panic at the shelter entrance. Fights breaking out, barricade on fire.", "Toplanma alanı girişinde panik. Kavga çıkıyor, barikat yanıyor." },
             { "Store alarm ringing, windows smashed. Residents afraid to leave the building.", "Dükkan alarmı çalıyor, camlar kırık. Sakinler binadan çıkmaya korkuyor." },
+
+            // Takip ihbarı (deprem / sel sonrası yağma; bir kısmı asılsız)
+            { "Looting report (unverified)", "Yağma ihbarı (doğrulanmamış)" },
+            { "UNVERIFIED", "TEYİTSİZ" },
+            { "Caller claims {0} injured", "Arayan {0} yaralı olduğunu söylüyor" },
+            { "Neighbors confirm smashed shop windows. A second caller reports the same street.", "Komşular kırık vitrinleri doğruluyor. İkinci bir arayan da aynı sokağı bildirdi." },
+            { "Store owner on the line, alarm clearly audible. Two people hurt by looters.", "Dükkan sahibi hatta, alarm net duyuluyor. Yağmacılar iki kişiyi yaraladı." },
+            { "Residents of the damaged building report strangers carrying out their belongings.", "Hasarlı binanın sakinleri, yabancıların eşyalarını taşıdığını bildiriyor." },
+            { "Caller refused to give a name and hung up. No other reports from the area.", "Arayan adını vermedi ve kapattı. Bölgeden başka ihbar yok." },
+            { "Laughter in the background. The caller changed the address twice.", "Arka planda gülüşmeler. Arayan adresi iki kez değiştirdi." },
+            { "Anonymous text message only. Callback number does not exist.", "Sadece isimsiz mesaj. Geri arama numarası mevcut değil." },
+            { "FALSE ALARM", "ASILSIZ İHBAR" },
+            { "LOOTING CONFIRMED", "YAĞMA DOĞRULANDI" },
+
+            // Telefon mesajları (sağ alt)
+            { "MESSAGES", "MESAJLAR" },
+            { "New case #{0}: {1} · {2} injured", "Yeni vaka #{0}: {1} · {2} yaralı" },
+            { "Case #{0}: looting reported near case #{1} (unverified)", "Vaka #{0}: #{1} yakınında yağma ihbarı (doğrulanmamış)" },
+            { "Case #{0}: {1} unit(s) dispatched", "Vaka #{0}: {1} birim sevk edildi" },
+            { "Case #{0}: first unit on scene", "Vaka #{0}: ilk ekip olay yerinde" },
+            { "Case #{0}: looting confirmed · {1} injured", "Vaka #{0}: yağma doğrulandı · {1} yaralı" },
+            { "Case #{0}: {1} lost so far, {2} still trapped", "Vaka #{0}: şu ana kadar {1} kayıp, {2} kişi hâlâ mahsur" },
+            { "Case #{0}: no survivors left · {1} lost", "Vaka #{0}: kurtarılacak kimse kalmadı · {1} kayıp" },
+            { "Case #{0}: helicopter out of fuel, returning to base", "Vaka #{0}: helikopterin yakıtı bitti, üsse dönüyor" },
+            { "Case #{0}: report expired, nobody called back", "Vaka #{0}: ihbar düştü, kimse geri aramadı" },
+            { "Case #{0}: time ran out · {1} lost", "Vaka #{0}: süre doldu · {1} kayıp" },
+            { "Case #{0} dismissed", "Vaka #{0} kapatıldı" },
+            { "Case #{0} dismissed · {1} lost", "Vaka #{0} kapatıldı · {1} kayıp" },
+            { "Case #{0}: FALSE ALARM · units returning", "Vaka #{0}: ASILSIZ İHBAR · ekip dönüyor" },
+            { "Case #{0} resolved · {1} rescued, {2} lost", "Vaka #{0} çözüldü · {1} kurtarıldı, {2} kayıp" },
+            { "Case #{0}: wrong team, no {1} sent · {2} more lost", "Vaka #{0}: yanlış ekip, {1} gitmedi · {2} kayıp daha" },
+            { "Call declined · {0} people left without help", "Çağrı reddedildi · {0} kişi yardımsız kaldı" },
+            { "Missed call · {0} people left without help", "Cevapsız çağrı · {0} kişi yardımsız kaldı" },
 
             // Ayarlar
             { "SETTINGS", "AYARLAR" },
