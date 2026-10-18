@@ -362,7 +362,7 @@ namespace ZeroHour.Phase2.Calls
                 buildingBounds = bounds,
                 sitePosition = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z),
                 markerAnchor = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z),
-                incidentTitle = "Looting report (unverified)",
+                incidentTitle = "Looting report", // "Doğrulanmamış" bilgisini dosyadaki TEYİTSİZ damgası veriyor
                 possibleUnitsText = "Possible units: " + PossibleUnitsFor(kind),
                 address = $"{houseNumber} {street}",
                 streetShort = ShortStreet(street),

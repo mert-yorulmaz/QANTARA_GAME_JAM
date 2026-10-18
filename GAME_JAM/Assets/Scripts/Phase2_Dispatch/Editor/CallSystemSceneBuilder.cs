@@ -1053,7 +1053,9 @@ namespace ZeroHour.Phase2.Editor
             NewText("Title", panel, "DISASTER RESPONSE LINE · INCIDENT FILE", pixelFont, 36, Ink, 62, 104, 1180, 160, TextAlignmentOptions.Left);
             TMP_Text callInfo = NewText("CallInfo", panel, "Call 02:14 · Line 2", readFont, 30, InkMuted, 1100, 108, 1738, 158, TextAlignmentOptions.Right);
 
-            TMP_Text stamp = NewText("Stamp", panel, "URGENT", pixelFont, 50, StampRed, 1432, 180, 1732, 270, TextAlignmentOptions.Center);
+            // Uzun damgalar ("UNVERIFIED") çerçeveden taşmasın: sığana kadar küçülür
+            TMP_Text stamp = FitInBox(NewText("Stamp", panel, "URGENT", pixelFont, 50, StampRed, 1432, 180, 1732, 270, TextAlignmentOptions.Center));
+            stamp.margin = new Vector4(26f, 0f, 26f, 0f);
             stamp.rectTransform.localEulerAngles = new Vector3(0f, 0f, -7.7f);
 
             // Bilgi satırları
@@ -1161,13 +1163,13 @@ namespace ZeroHour.Phase2.Editor
 
             // Alt butonlar
             Button dismiss = NewButton("DismissButton", panel, 62, 1150, 466, 1246);
-            NewText("Label", dismiss.transform, "DISMISS CALL", pixelFont, 40, Ink, 0, 0, 404, 96, TextAlignmentOptions.Center);
+            FitInBox(NewText("Label", dismiss.transform, "DISMISS CALL", pixelFont, 40, Ink, 0, 0, 404, 96, TextAlignmentOptions.Center));
 
             Button dispatch = NewButton("DispatchButton", panel, 1406, 1146, 1738, 1250);
             Image dispatchFill = NewImage("ActiveFill", dispatch.transform, null, Ink);
             Stretch(dispatchFill.rectTransform);
             dispatchFill.raycastTarget = false;
-            TMP_Text dispatchLabel = NewText("Label", dispatch.transform, "DISPATCH", pixelFont, 40, Cream, 0, 0, 332, 104, TextAlignmentOptions.Center);
+            TMP_Text dispatchLabel = FitInBox(NewText("Label", dispatch.transform, "DISPATCH", pixelFont, 40, Cream, 0, 0, 332, 104, TextAlignmentOptions.Center));
 
             so.FindProperty("root").objectReferenceValue = root.gameObject;
             so.FindProperty("backdropButton").objectReferenceValue = backdropButton;

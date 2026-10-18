@@ -115,7 +115,7 @@ namespace ZeroHour.Phase2.Calls
             { "Store alarm ringing, windows smashed. Residents afraid to leave the building.", "Dükkan alarmı çalıyor, camlar kırık. Sakinler binadan çıkmaya korkuyor." },
 
             // Takip ihbarı (deprem / sel sonrası yağma; bir kısmı asılsız)
-            { "Looting report (unverified)", "Yağma ihbarı (doğrulanmamış)" },
+            { "Looting report", "Yağma ihbarı" },
             { "UNVERIFIED", "TEYİTSİZ" },
             { "Caller claims {0} injured", "Arayan {0} yaralı olduğunu söylüyor" },
             { "Neighbors confirm smashed shop windows. A second caller reports the same street.", "Komşular kırık vitrinleri doğruluyor. İkinci bir arayan da aynı sokağı bildirdi." },

@@ -570,3 +570,16 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - **Ayarlarda Türkçe taşmalar:** "KAPALI" ve "VARSAYILAN" kutularının kenarına değiyordu; bu etiketler artık kutuya sığana kadar küçülüyor (İngilizce boyut değişmedi).
 - **Telefon mesajları dile göre dinamik:** Mesajlar İngilizce kalıp + değerler olarak saklanıyor; oyun içinde dil değişince ekrandaki tüm mesajlar (ekip adları dahil, ör. Ambulans ↔ Ambulance) anında yeni dilde yeniden yazılıyor, balon yükseklikleri yeniden hesaplanıyor.
 - *Test:* Yanlış ekip sevk edilen vaka → 3 mesaj; dil EN ↔ TR değiştirildi, hepsi doğru çevrildi. Ayarlar paneli iki dilde %100'de görüntülendi. Konsolda hata yok. Kayıtlı dil tercihi (Türkçe) testten sonra geri kondu.
+
+---
+
+# 🔄 GÜNCELLEME 9.3 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 9.3"TÜR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+
+## ✅ Yapılanlar
+- **"UNVERIFIED" damgası çerçeveden taşıyordu:** damga yazısı artık çerçevesine sığana kadar küçülüyor ve kenarlarda boşluk bırakıyor (kısa "URGENT / ACİL / RUTİN" damgaları aynı boyutta).
+- Kaza Dosyasındaki "ÇAĞRIYI KAPAT" / "SEVK ET" düğme yazıları da düğmeye sığana kadar küçülüyor (Türkçe'de kenara değiyordu).
+- Takip ihbarının başlığı "Yağma ihbarı (doğrulanmamış)" → **"Yağma ihbarı"** (İng. "Looting report"): Türkçe'de damganın altına giriyordu; "doğrulanmamış" bilgisini zaten TEYİTSİZ damgası veriyor.
+- *Test:* Takip ihbarı dosyası İngilizce ve Türkçe açılıp görüntülendi; damga, başlık ve düğmeler çakışmıyor. Konsolda hata yok.
