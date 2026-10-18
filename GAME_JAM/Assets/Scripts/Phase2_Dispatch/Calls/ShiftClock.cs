@@ -31,6 +31,9 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private TMP_Text debriefStatsText;
         [SerializeField] private TMP_Text debriefGradeText;
         [SerializeField] private Button playAgainButton;
+        [SerializeField] private Button mainMenuButton;
+        [Tooltip("ANA MENÜ düğmesinin açtığı sahne")]
+        [SerializeField] private string mainMenuScene = "MainMenu";
 
         private static readonly Color NormalColor = new Color(0.47f, 0.88f, 0.69f);
         private static readonly Color WarningColor = new Color(1f, 0.36f, 0.30f);
@@ -49,6 +52,7 @@ namespace ZeroHour.Phase2.Calls
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             if (playAgainButton != null) playAgainButton.onClick.AddListener(PlayAgain);
+            if (mainMenuButton != null) mainMenuButton.onClick.AddListener(GoToMainMenu);
         }
 
         private void OnDestroy()
@@ -137,6 +141,12 @@ namespace ZeroHour.Phase2.Calls
         {
             Time.timeScale = 1f;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private void GoToMainMenu()
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(mainMenuScene);
         }
     }
 }

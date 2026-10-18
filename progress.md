@@ -676,3 +676,32 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Mesai boyunca monitör kapalı; mesai bitince açıldı, görev ve "[E] Start the night shift" yazısı doğru.
 - Monitöre giriş tetiklendi → kamera ekranı doldurdu → Faz 2 yüklendi (~2 sn), imleç serbest, hata yok.
 - Gerçek E tuşu MCP ile gönderilemedi → monitöre bakıp E'ye basmak elle denenmeli.
+
+---
+
+# 🔄 GÜNCELLEME 11 — 18 Ekim 2026 (Claude Code) — ANA MENÜ ("SIGN")
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 11"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi, `main`'e birleştirilmedi, push edilmedi.
+> Kullanıcı kararları: oyunun adı **SIGN**; alt başlık **Disaster Control Line**; sayılar oyunla tutarlı (4 hat · 11 ekip · 150 kişi); sekme yazısı kaldırıldı; Faz 2 karnesine "Ana Menü"; menü müziği = Faz 1 arka plan müziği; Faz 2 müziği sonra.
+
+## ✅ Yapılanlar
+- **Yeni sahne `Assets/Scenes/MainMenu.unity`**, kurulum menüsü `ZeroHour/9. Build Main Menu (SIGN)` (`Scripts/MainMenu/Editor/MainMenuBuilder.cs`, tekrar çalıştırılabilir). Build sırası: **MainMenu → Phase1_Office → SampleScene**. Proje ürün adı **SIGN** (pencere başlığı / .exe adı).
+- Yağız'ın `00_main_menu` tasarımı birebir (2560×1440 piksel koordinatları, 0.75 ölçek): döngüdeki şehir videosu (`menu_background_loop_1280x720.mp4`; ilk kare gelene kadar sabit `menu_city_night` resmi, siyah kare yok), kayan **CANLI / LIVE** haber bandı (6 deprem haberi, TR/EN), alt vardiya dosyası çubuğu: **SIGN** + "DISASTER CONTROL LINE / AFET KONTROL HATTI", HATLAR 4 açık · BİRİMLER 11 hazır · ŞEHİR 150 kişi, **GÖREVDE / ON DUTY** damgası. Sekmenin şekli görselde kaldı, yazısı yok.
+- Düğmeler: **VARDİYAYA BAŞLA** (ekran ve müzik kararır → Faz 1), ayarlar (ortak panel), çıkış (oyunu kapatır; editörde Play'i durdurur). Tıklama sesi: `SOUNDS/sound effect_mouse click.mp3` (önceden kullanılmıyordu). Menü siyahtan açılır.
+- **Menü müziği:** Faz 1'in `sound effect_phase 1 background.mp3`'ü döngüde.
+- **Müzik kaydırıcısı artık gerçekten çalışıyor:** yeni `Scripts/Shared/MusicVolume.cs`; menü müziği ve Faz 1'deki `BackgroundMusic` ayarlardaki müzik seviyesini her karede uygular (varsayılan %50). Ses kaydırıcısı genel ses olarak kaldı.
+- **Faz 2 karnesi:** "TEKRAR OYNA"nın yanına **ANA MENÜ / MAIN MENU** (koyu panel stilinde).
+- Olay dosyası başlığı da menüyle aynı: "DISASTER CONTROL LINE · INCIDENT FILE / AFET KONTROL HATTI · OLAY DOSYASI".
+
+## 🐞 Bulunan / Düzeltilen
+- Faz 2 sahnesinde kaydedilmemiş bir değişiklikle **şehrin tamamı (~876 obje) x −15, z −17 kaymıştı** (büyük ihtimalle sahne görünümünde yanlışlıkla sürükleme). Kullanıcı onayıyla geri alındı; sahne diskteki sağlam hâlinden açıldı.
+- Çeviri listesine eklenen "UNITS" anahtarı zaten vardı ("BİRİMLER") → çeviri sistemi açılışta çöküyordu; tekrar silindi, menüde de "BİRİMLER" kullanılıyor.
+- Video ilk kare gelmeden ekrana bağlanınca arka plan siyah görünüyordu → ilk kare çizilince bağlanıyor.
+- Türkçe taşmalar (CANLI, GÖREVDE, ŞEHİR) kutularına sığdırıldı.
+
+## 🧪 Test
+- Menü EN ve TR ekran görüntüleri tasarımla karşılaştırıldı. Ayarlar düğmesi paneli açtı.
+- VARDİYAYA BAŞLA → Faz 1 yüklendi (müzik %50 seviyede). Faz 2 karnesi → ANA MENÜ → menüye dönüldü (oyun hızı 1, imleç serbest). Hata yok.
+- Konsolda 2 video uyarısı: videonun H.264 profili ve renk bilgisi (zaman damgası düzeltiliyor, renk varsayılana düşüyor) — oynatmayı engellemez.
+- **Elle test edilmeli:** videonun normal oyunda dönmesi (MCP ile kare kare ilerletirken video oynamıyor), müzik ve tık sesinin duyulması, gerçek fare tıklamaları.

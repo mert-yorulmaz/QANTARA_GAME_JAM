@@ -261,7 +261,8 @@ namespace ZeroHour.Phase2.UI
             {
                 musicPercentText.text = $"{Mathf.RoundToInt(currentMusicVolume * 100f)}%";
             }
-            // Varsa müzik AudioSource'ları buradan yönetilebilir
+            // Müzik çalan kaynaklar (MusicVolume bileşeni) bu seviyeyi her karede uygular
+            MusicVolume.Level = currentMusicVolume;
         }
 
         // --- DİL FONKSİYONLARI ---
@@ -313,6 +314,7 @@ namespace ZeroHour.Phase2.UI
 
             Screen.fullScreen = true;
             AudioListener.volume = currentSoundVolume;
+            MusicVolume.Level = currentMusicVolume;
 
             UpdateAllUIElements();
             SaveSettings();
@@ -348,6 +350,7 @@ namespace ZeroHour.Phase2.UI
             isFullscreen = PlayerPrefs.GetInt(PrefFullscreen, 1) == 1;
 
             AudioListener.volume = currentSoundVolume;
+            MusicVolume.Level = currentMusicVolume;
         }
     }
 }

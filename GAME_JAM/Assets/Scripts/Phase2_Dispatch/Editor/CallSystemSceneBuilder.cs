@@ -1053,7 +1053,7 @@ namespace ZeroHour.Phase2.Editor
 
             // Başlıklar
             TMP_Text caseTab = NewText("CaseTab", panel, "CASE #0147", pixelFont, 40, Ink, 60, 8, 450, 62, TextAlignmentOptions.Left);
-            NewText("Title", panel, "DISASTER RESPONSE LINE · INCIDENT FILE", pixelFont, 36, Ink, 62, 104, 1180, 160, TextAlignmentOptions.Left);
+            NewText("Title", panel, "DISASTER CONTROL LINE · INCIDENT FILE", pixelFont, 36, Ink, 62, 104, 1180, 160, TextAlignmentOptions.Left);
             TMP_Text callInfo = NewText("CallInfo", panel, "Call 02:14 · Line 2", readFont, 30, InkMuted, 1100, 108, 1738, 158, TextAlignmentOptions.Right);
 
             // Uzun damgalar ("UNVERIFIED") çerçeveden taşmasın: sığana kadar küçülür
@@ -1385,11 +1385,20 @@ namespace ZeroHour.Phase2.Editor
             again.targetGraphic = againBg;
             NewText("Label", againBg.transform, "PLAY AGAIN", pixelFont, 40, AcceptInk, 0, 0, 360, 88, TextAlignmentOptions.Center);
 
+            // Ana menüye dönüş: vardiya HUD'ındaki dişli gibi koyu çerçeveli panel düğmesi
+            Image menuBg = NewImage("MainMenuButton", rt, null, HudPanelColor);
+            StylePanel(menuBg, false);
+            Place(menuBg.rectTransform, 42, 620, 402, 708);
+            Button menu = menuBg.gameObject.AddComponent<Button>();
+            menu.targetGraphic = menuBg;
+            FitInBox(NewText("Label", menuBg.transform, "MAIN MENU", pixelFont, 40, HudLabel, 0, 0, 360, 88, TextAlignmentOptions.Center));
+
             SerializedObject so = new SerializedObject(clock);
             so.FindProperty("debriefRoot").objectReferenceValue = root.gameObject;
             so.FindProperty("debriefStatsText").objectReferenceValue = stats;
             so.FindProperty("debriefGradeText").objectReferenceValue = grade;
             so.FindProperty("playAgainButton").objectReferenceValue = again;
+            so.FindProperty("mainMenuButton").objectReferenceValue = menu;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             root.gameObject.SetActive(false);
