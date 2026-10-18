@@ -36,6 +36,10 @@ public class ComputerInteraction : MonoBehaviour
 
     void Update()
     {
+        // Ayarlar menusu acikken (ESC) sandalye / bilgisayar girdisi beklesin
+        if (ZeroHour.Shared.GamePause.IsMenuOpen)
+            return;
+
         if (Keyboard.current == null ||
             playerCamera == null ||
             chairCollider == null)
@@ -49,6 +53,9 @@ public class ComputerInteraction : MonoBehaviour
             if (Keyboard.current.eKey.wasPressedThisFrame ||
                 Keyboard.current.escapeKey.wasPressedThisFrame)
             {
+                // Bilgisayar basinda ESC once bilgisayardan kaldirir; ayarlar bu tusla acilmaz
+                if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                    ZeroHour.Shared.GamePause.ConsumeEscape();
                 ExitComputer();
             }
 

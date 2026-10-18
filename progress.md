@@ -630,3 +630,28 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Sahnedeki liste (`Phase1_Office.unity` → InspectionDesk) ve koddaki yedek liste (`InspectionRules.DefaultCases`) birlikte güncellendi. "Case X of N", görev listesi ve mesai raporu sayıyı listeden aldığı için kendiliğinden 3 oldu.
 - *Test:* Play'de "Case 1 of 3", hata yok.
 - Not: Mesai süresi (gerçek 120 sn) değişmedi; 3 dosya için uzun gelirse kısaltılabilir. Kural kitabında çıkarılan dosyaların kuralları (1.1, 1.2, 2.2) hâlâ duruyor.
+
+---
+
+# 🔄 GÜNCELLEME 10.2 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 10.2"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi, `main`'e birleştirilmedi, push edilmedi.
+
+## ✅ Ayarlar her iki fazda ESC ile açılıyor
+- Ayarlar paneli artık Faz 2 sahnesinin içinde değil: **`Assets/Resources/GlobalSettings.prefab`** (kendi Canvas'ı, en üstte çizilir). Oyun hangi sahneden başlarsa başlasın bir kez yüklenir ve sahne değişse de kalır → Faz 1 ofis, Faz 2 gece vardiyası ve ileride **ana menü** aynı paneli kullanır. Sahnede EventSystem yoksa panel kendisi ekler.
+- Panel açıkken oyun durur, fare imleci görünür; kapanınca imleç eski hâline döner (Faz 1'de tekrar kilitlenir).
+- Ortak durum sınıfı **`ZeroHour.Shared.GamePause`** (`Scripts/Shared/GamePause.cs`): `IsMenuOpen` + `ConsumeEscape()`. Menü açıkken bekleyen girdiler: Faz 1 sandalye/bilgisayar (E), kapı (E), kural kitabı (R), masaüstü tıklamaları; Faz 2 harita yakınlaştırma (fare tekerleği).
+- ESC öncelik sırası: Faz 1'de bilgisayar başındayken ESC önce bilgisayardan kaldırır; Faz 2'de olay dosyası açıkken ESC önce dosyayı kapatır. İkinci ESC ayarları açar.
+- Faz 2 vardiya HUD'ındaki dişli: `OpenSettingsButton` bileşeni (ana menüdeki "Ayarlar" düğmesi de bunu kullanabilir).
+- **Birleştirmeden çıkan hata düzeltildi:** Kurulum aracında düz `ShiftClock`, Faz 1'in isim alanı olmayan aynı adlı sınıfını seçiyordu (C# kuralı) ve araç yarıda kalıyordu. Araçta `Phase2Clock` takma adı kullanılıyor. Oyun kodu etkilenmemişti.
+
+## 🧪 Test
+- Faz 1: panel açıldı (oyun durdu, imleç serbest), kapandı (imleç tekrar kilitli, oyun devam).
+- Faz 1 → Faz 2 geçişi: tek panel kopyası Faz 2'ye taşındı, dişli açtı, GERİ kapattı.
+- Doğrudan Faz 2'den başlatma: panel yüklendi; menü açıkken kamera hareket etmedi. Hata yok.
+- Gerçek ESC tuşu MCP ile gönderilemiyor (Unity odakta değilken klavye olayı oyuna ulaşmıyor) → ESC, bilgisayar başında ESC ve olay dosyasında ESC elle denenmeli.
+
+## ⚠️ Bilinmesi Gerekenler
+- Dil ayarı şimdilik yalnızca Faz 2'yi çevirir; Faz 1'in metinleri İngilizce (Faz 1'de çeviri sistemi yok).
+- Müzik kaydırıcısı kaydediliyor ama henüz müzik yok.

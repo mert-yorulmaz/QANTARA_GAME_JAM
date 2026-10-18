@@ -88,7 +88,8 @@ public class BiaDesktop : MonoBehaviour
                 periodIcon.sprite = periodIcons[period];
         }
 
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        // Ayarlar menüsü açıkken tıklamalar arkadaki masaüstüne geçmesin
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && !ZeroHour.Shared.GamePause.IsMenuOpen)
             HandlePointerDown(Mouse.current.position.ReadValue());
     }
 

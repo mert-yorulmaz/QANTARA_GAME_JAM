@@ -1,11 +1,38 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+using ZeroHour.Shared;
 
 namespace ZeroHour.Phase2.UI
 {
+    /// <summary>
+    /// Ayarlar / duraklatma menüsü. Sahneden bağımsız tek kopya: Resources/GlobalSettings prefab'ı oyun açılınca
+    /// bir kez yüklenir ve sahne değişse de kalır (Faz 1 ofis, Faz 2 gece vardiyası, ana menü). Her sahnede ESC ile açılır.
+    /// Diğer scriptlerin ESC'si önce çalışsın diye (bilgisayardan kalkma, olay dosyasını kapatma) bu script en son çalışır.
+    /// </summary>
+    [DefaultExecutionOrder(100)]
     public class SettingsUI : MonoBehaviour
     {
+        public static SettingsUI Instance { get; private set; }
+
+        private const string PrefabResourceName = "GlobalSettings";
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void CreateGlobalInstance()
+        {
+            if (Instance != null) return;
+            GameObject prefab = Resources.Load<GameObject>(PrefabResourceName);
+            if (prefab == null)
+            {
+                Debug.LogWarning("[Settings] Resources/GlobalSettings bulunamadı: ZeroHour kurulum menüsünü (8.) çalıştırın.");
+                return;
+            }
+            GameObject instance = Instantiate(prefab);
+            instance.name = PrefabResourceName;
+        }
+
         [Header("--- PANEL ROOT ---")]
         [Tooltip("Ayarlar penceresinin ana GameObject'i (Açılıp kapanacak panel)")]
         [SerializeField] private GameObject settingsPanelRoot;
@@ -60,7 +87,21 @@ namespace ZeroHour.Phase2.UI
 
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+            DontDestroyOnLoad(transform.root.gameObject);
             LoadSavedSettings();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance != this) return;
+            Instance = null;
+            GamePause.IsMenuOpen = false;
         }
 
         private void Start()
@@ -105,7 +146,7 @@ namespace ZeroHour.Phase2.UI
         private void Update()
         {
             // ESC tuşuna basıldığında Ayarlar panelini aç / kapat
-            if (IsEscapePressed() && !IsEscapeUsedByIncidentFile())
+            if (IsEscapePressed() && !GamePause.EscapeConsumedThisFrame && !IsEscapeUsedByIncidentFile())
             {
                 ToggleSettings();
             }
@@ -146,6 +187,15 @@ namespace ZeroHour.Phase2.UI
                     // Ayarlar açıkken oyun durur
                     timeScaleBeforeOpen = Time.timeScale;
                     Time.timeScale = 0f;
+
+                    // Faz 1 imleci kilitler (birinci şahıs); menüde fare görünsün, kapanınca eski hâline dönsün
+                    cursorLockBeforeOpen = Cursor.lockState;
+                    cursorVisibleBeforeOpen = Cursor.visible;
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+
+                    EnsureEventSystem();
+                    GamePause.IsMenuOpen = true;
                 }
                 settingsPanelRoot.SetActive(true);
                 UpdateAllUIElements();
@@ -157,12 +207,30 @@ namespace ZeroHour.Phase2.UI
             SaveSettings();
             if (settingsPanelRoot != null)
             {
-                if (settingsPanelRoot.activeSelf) Time.timeScale = timeScaleBeforeOpen;
+                if (settingsPanelRoot.activeSelf)
+                {
+                    Time.timeScale = timeScaleBeforeOpen;
+                    Cursor.lockState = cursorLockBeforeOpen;
+                    Cursor.visible = cursorVisibleBeforeOpen;
+                    GamePause.IsMenuOpen = false;
+                }
                 settingsPanelRoot.SetActive(false);
             }
         }
 
         private float timeScaleBeforeOpen = 1f;
+        private CursorLockMode cursorLockBeforeOpen = CursorLockMode.None;
+        private bool cursorVisibleBeforeOpen = true;
+
+        public bool IsOpen => settingsPanelRoot != null && settingsPanelRoot.activeSelf;
+
+        // Butonlar tıklanabilsin: sahnede EventSystem yoksa (ör. yeni bir menü sahnesi) bir tane oluştur
+        private static void EnsureEventSystem()
+        {
+            if (EventSystem.current != null || FindFirstObjectByType<EventSystem>() != null) return;
+            GameObject es = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+            es.transform.SetParent(null);
+        }
 
         public void ToggleSettings()
         {

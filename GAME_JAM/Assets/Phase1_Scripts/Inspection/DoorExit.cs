@@ -33,6 +33,10 @@ public class DoorExit : MonoBehaviour
 
     void Update()
     {
+        // Ayarlar menüsü açıkken kapı girdisi beklesin
+        if (ZeroHour.Shared.GamePause.IsMenuOpen)
+            return;
+
         if (leaving || Keyboard.current == null || playerCamera == null || doorCollider == null)
             return;
 

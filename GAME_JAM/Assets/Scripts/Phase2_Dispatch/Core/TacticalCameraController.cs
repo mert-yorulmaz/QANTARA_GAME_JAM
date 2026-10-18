@@ -31,6 +31,9 @@ namespace ZeroHour.Phase2.Core
 
         private void Update()
         {
+            // Ayarlar menüsü açıkken fare tekerleği haritayı yakınlaştırmasın
+            if (ZeroHour.Shared.GamePause.IsMenuOpen) return;
+
             HandlePan();
             HandleZoom();
         }

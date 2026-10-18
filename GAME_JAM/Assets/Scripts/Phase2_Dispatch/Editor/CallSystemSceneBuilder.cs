@@ -13,6 +13,7 @@ using ZeroHour.Phase2.Core;
 using ZeroHour.Phase2.Data;
 using ZeroHour.Phase2.UI;
 using ZeroHour.Phase2.Units;
+using Phase2Clock = ZeroHour.Phase2.Calls.ShiftClock;
 
 namespace ZeroHour.Phase2.Editor
 {
@@ -145,13 +146,15 @@ namespace ZeroHour.Phase2.Editor
             BuildCallCard(canvasObj.transform, calls, callAudio, ringingSprite, listeningSprite, fillSprite);
             BuildIncidentFile(canvasObj.transform, filePanel);
 
-            SettingsUI settings = BuildSettings(canvasObj.transform);
-            ShiftClock shiftClock = GetOrAdd<ShiftClock>(systemObj);
-            BuildShiftHud(canvasObj.transform, shiftClock, settings);
+            // Phase2Clock takma adı: Faz 1'de isim alanı olmayan aynı adlı ShiftClock var ve düz "ShiftClock" onu seçer
+            Phase2Clock shiftClock = GetOrAdd<Phase2Clock>(systemObj);
+            BuildShiftHud(canvasObj.transform, shiftClock);
             BuildTutorialHints(canvasObj.transform);
             BuildDebrief(canvasObj.transform, shiftClock);
-            settings.transform.SetAsLastSibling(); // Ayarlar her şeyin üstünde
             LocalizeStaticTexts(canvasObj.transform);
+
+            // Ayarlar sahneye değil, her sahnede ESC ile açılan ortak prefab'a kurulur (Faz 1, Faz 2, ana menü)
+            BuildGlobalSettingsPrefab();
 
             // 4. Kaydet
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -1200,7 +1203,7 @@ namespace ZeroHour.Phase2.Editor
         private static readonly Color SettingsBlue = new Color(0.31f, 0.76f, 0.97f, 1f);
         private static readonly Color ToggleTextIdle = new Color(0.55f, 0.65f, 0.78f, 1f);
 
-        private static void BuildShiftHud(Transform canvas, ShiftClock clock, SettingsUI settings)
+        private static void BuildShiftHud(Transform canvas, Phase2Clock clock)
         {
             Image panel = NewImage("HUD_Shift", canvas, null, HudPanelColor);
             panel.raycastTarget = false;
@@ -1232,7 +1235,7 @@ namespace ZeroHour.Phase2.Editor
             Place(gearIcon.rectTransform, 28, 28, 108, 108);
             gearIcon.preserveAspect = true;
             gearIcon.raycastTarget = false;
-            UnityEditor.Events.UnityEventTools.AddPersistentListener(gearButton.onClick, settings.OpenSettings);
+            gearBg.gameObject.AddComponent<OpenSettingsButton>(); // Ortak ayarlar paneli sahnede değil, referansla bağlanamaz
 
             // HUD öğeleri en altta çizilsin: Kaza Dosyası, karne ve ayarlar bunların üstünde kalır
             gearBg.transform.SetAsFirstSibling();
@@ -1344,7 +1347,7 @@ namespace ZeroHour.Phase2.Editor
         // VARDİYA SONU KARNESİ
         // ==========================================
 
-        private static void BuildDebrief(Transform canvas, ShiftClock clock)
+        private static void BuildDebrief(Transform canvas, Phase2Clock clock)
         {
             RectTransform root = NewRect("ShiftDebrief", canvas);
             Stretch(root);
@@ -1395,6 +1398,30 @@ namespace ZeroHour.Phase2.Editor
         // ==========================================
         // AYARLAR (Yağız'ın settings_panel_dark tasarımı → mevcut SettingsUI)
         // ==========================================
+
+        private const string GlobalSettingsPrefabPath = "Assets/Resources/GlobalSettings.prefab";
+
+        /// <summary>Kendi Canvas'ı olan ayarlar panelini prefab olarak kaydeder; SettingsUI onu oyun açılınca yükler.</summary>
+        private static void BuildGlobalSettingsPrefab()
+        {
+            GameObject root = new GameObject("GlobalSettings", typeof(RectTransform));
+            root.layer = 5;
+            Canvas canvas = root.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1000; // Her iki fazın UI'ının da üstünde
+            CanvasScaler scaler = root.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+            root.AddComponent<GraphicRaycaster>();
+
+            BuildSettings(root.transform);
+            LocalizeStaticTexts(root.transform);
+
+            EnsureFolder("Assets/Resources");
+            PrefabUtility.SaveAsPrefabAsset(root, GlobalSettingsPrefabPath);
+            Object.DestroyImmediate(root);
+        }
 
         private static SettingsUI BuildSettings(Transform canvas)
         {

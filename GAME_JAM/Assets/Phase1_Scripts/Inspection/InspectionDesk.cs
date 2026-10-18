@@ -199,7 +199,7 @@ public class InspectionDesk : MonoBehaviour
                 "Good morning, inspector. New files are waiting in the Case Files folder.");
         }
 
-        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame && !ZeroHour.Shared.GamePause.IsMenuOpen)
         {
             if (ruleBook.IsOpen)
                 ruleBook.Close();
