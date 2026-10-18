@@ -14,6 +14,7 @@ namespace ZeroHour.Phase2.Calls
     {
         Waiting,     // Rozet haritada, ekip bekleniyor
         Responding,  // Ekip yolda
+        Working,     // En az bir ekip olay yerinde, iş ilerliyor
         Closed       // Çözüldü / kaybedildi / reddedildi
     }
 
@@ -46,10 +47,31 @@ namespace ZeroHour.Phase2.Calls
         public float timeLimit;
         public float respondingTime;   // Ekip yola çıktıktan beri geçen süre (takılma güvencesi)
 
-        public readonly List<UnitType> sentUnits = new List<UnitType>();
+        public readonly List<UnitType> sentUnits = new List<UnitType>();   // Gönderilen araç tipleri (helikopter = RescueHelicopter)
+        public readonly List<UnitType> sentRoles = new List<UnitType>();   // Yapılacak iş: helikopterler seçilen rolde sayılır
+        public readonly List<UnitType> heliRoles = new List<UnitType>();   // Her helikopterin rolü (ambulans / polis / itfaiye)
+        public readonly List<UnitType> onSiteRoles = new List<UnitType>(); // Olay yerine varmış araçların rolleri
+        public int helisArrived;
+
+        // Olay yerinde iş: workRequired saniye × (1 gerekli ekip). Ekip sayısı arttıkça hızlanır.
+        public float workRequired;
+        public float workDone;
+        public float currentWorkRate;
+
         public IncidentMarker marker;
 
         /// <summary>Olayı gerçekten çözen birim tipi.</summary>
         public UnitType RequiredUnit => kind == CallIncidentKind.Fire ? UnitType.FireEngine : UnitType.Ambulance;
+
+        /// <summary>İş hızı katkısı: gerekli ekip 1, olası (yardımcı) ekip 0.5, ilgisiz ekip 0.</summary>
+        public float RoleWeight(UnitType role)
+        {
+            if (role == RequiredUnit) return 1f;
+            if (kind == CallIncidentKind.Fire) return role == UnitType.Ambulance ? 0.5f : 0f;
+            return (role == UnitType.FireEngine || role == UnitType.PoliceCruiser) ? 0.5f : 0f;
+        }
+
+        /// <summary>Kalan iş süresi (sn), mevcut hızla.</summary>
+        public float WorkSecondsLeft => currentWorkRate > 0.001f ? Mathf.Max(0f, workRequired - workDone) / currentWorkRate : Mathf.Max(0f, workRequired - workDone);
     }
 }

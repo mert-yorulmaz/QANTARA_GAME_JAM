@@ -320,6 +320,13 @@ namespace ZeroHour.Phase2.Editor
             AssignVehicle(so, "policeCar", "Vehicle_Police Car_separate");
             AssignVehicle(so, "fireTruck", "Vehicle_Bus_color02_separate");
             AssignVehicle(so, "helicopter", "HelicopterV2");
+
+            // Oyun %40 daha yavaş; filo: her kara aracından 4, helikopterden 3 (istasyonda klonlanır)
+            so.FindProperty("speedMultiplier").floatValue = 0.6f;
+            so.FindProperty("policeCount").intValue = 4;
+            so.FindProperty("ambulanceCount").intValue = 4;
+            so.FindProperty("fireTruckCount").intValue = 4;
+            so.FindProperty("helicopterCount").intValue = 3;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -713,6 +720,54 @@ namespace ZeroHour.Phase2.Editor
                 row.FindPropertyRelative("countText").objectReferenceValue = count;
                 row.FindPropertyRelative("minusButton").objectReferenceValue = minus;
                 row.FindPropertyRelative("plusButton").objectReferenceValue = plus;
+            }
+
+            // Joker helikopter: seçilen her helikopter için helikopter satırında bir rol bölmesi (ambulans / polis / itfaiye)
+            Sprite ambulanceIcon = LoadSpriteAt("Assets/UI/Dispatch_UI_Assets/05_sprites/ambulance_preview.png", true);
+            Sprite policeIcon = LoadSpriteAt("Assets/UI/Dispatch_UI_Assets/05_sprites/police_preview.png", true);
+            Sprite fireIcon = LoadSpriteAt("Assets/UI/Dispatch_UI_Assets/05_sprites/fire_truck_preview.png", true);
+
+            SerializedProperty slots = so.FindProperty("heliRoleSlots");
+            const int SlotCount = 3;
+            slots.arraySize = SlotCount;
+            float heliRowY = 741 + 3 * 106;
+            for (int s = 0; s < SlotCount; s++)
+            {
+                float x0 = 430 + s * 255;
+                Image slotBg = NewImage($"HeliRoleSlot{s + 1}", panel, null, new Color(0.84f, 0.77f, 0.60f, 1f));
+                Place(slotBg.rectTransform, x0, heliRowY - 42, x0 + 240, heliRowY + 42);
+                slotBg.raycastTarget = false;
+
+                SerializedProperty slot = slots.GetArrayElementAtIndex(s);
+                slot.FindPropertyRelative("root").objectReferenceValue = slotBg.gameObject;
+
+                (string field, string selectedField, Sprite icon, string label)[] roles =
+                {
+                    ("ambulanceButton", "ambulanceSelected", ambulanceIcon, "Ambulance"),
+                    ("policeButton", "policeSelected", policeIcon, "Police"),
+                    ("fireButton", "fireSelected", fireIcon, "Fire"),
+                };
+
+                for (int k = 0; k < roles.Length; k++)
+                {
+                    float bx = 8 + k * 78;
+                    Button roleButton = NewButton($"Role_{roles[k].label}", slotBg.transform, bx, 7, bx + 70, 77);
+
+                    Image selected = NewImage("Selected", roleButton.transform, null, Ink);
+                    Stretch(selected.rectTransform);
+                    selected.raycastTarget = false;
+                    selected.enabled = false;
+
+                    Image icon = NewImage("Icon", roleButton.transform, roles[k].icon, Color.white);
+                    Place(icon.rectTransform, 11, 11, 59, 59);
+                    icon.preserveAspect = true;
+                    icon.raycastTarget = false;
+
+                    slot.FindPropertyRelative(roles[k].field).objectReferenceValue = roleButton;
+                    slot.FindPropertyRelative(roles[k].selectedField).objectReferenceValue = selected;
+                }
+
+                slotBg.gameObject.SetActive(false);
             }
 
             // Alt butonlar

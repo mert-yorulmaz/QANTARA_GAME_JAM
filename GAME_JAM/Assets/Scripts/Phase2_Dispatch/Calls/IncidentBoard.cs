@@ -26,7 +26,14 @@ namespace ZeroHour.Phase2.Calls
         [Tooltip("Ekip gönderilmezse bu süre sonunda yaralılar kaybedilir ve rozet kalkar (sn)")]
         [SerializeField] private float unattendedTimeout = 45f;
         [Tooltip("Ekip yola çıktıktan sonra bu süre içinde varamazsa olay yine de kapanır (rozet takılı kalmasın)")]
-        [SerializeField] private float respondingTimeout = 60f;
+        [SerializeField] private float respondingTimeout = 90f;
+
+        [Header("Olay Yerinde İş Süresi (1 gerekli ekiple, sn)")]
+        [Tooltip("Aynı işi yapan her ek araç işi hızlandırır: 3 itfaiye = 3 kat hızlı")]
+        [SerializeField] private float fireWorkSeconds = 24f;
+        [SerializeField] private float collapseWorkSeconds = 30f;
+        [Tooltip("İşe katkısı olmayan ekipler gönderilse bile iş bu en düşük hızla ilerler")]
+        [SerializeField] private float minimumWorkRate = 0.25f;
         [SerializeField] private int minInjured = 2;
         [SerializeField] private int maxInjured = 8;
         [SerializeField] private int maxActiveIncidents = 3;
@@ -176,7 +183,8 @@ namespace ZeroHour.Phase2.Calls
                 affected = injured + UnityEngine.Random.Range(2, 7),
                 urgent = injured >= 5,
                 timeRemaining = unattendedTimeout,
-                timeLimit = unattendedTimeout
+                timeLimit = unattendedTimeout,
+                workRequired = kind == CallIncidentKind.Fire ? fireWorkSeconds : collapseWorkSeconds
             };
 
             if (markerPrefab != null)
@@ -198,9 +206,11 @@ namespace ZeroHour.Phase2.Calls
         private Transform PickFreeBuilding()
         {
             List<Transform> free = new List<Transform>();
+            AStarMovementTester fleet = AStarMovementTester.Instance;
             foreach (Transform b in candidateBuildings)
             {
                 if (b == null) continue;
+                if (fleet != null && fleet.IsHeliRoof(b)) continue; // Çatısında helikopter park eden bina
                 bool used = false;
                 foreach (IncidentReport r in activeIncidents)
                 {
@@ -241,6 +251,17 @@ namespace ZeroHour.Phase2.Calls
                     // Güvence: ekip yolda takılırsa rozet sonsuza kadar kalmasın
                     r.respondingTime += Time.deltaTime;
                     if (r.respondingTime >= respondingTimeout) ResolveIncident(r);
+                    continue;
+                }
+
+                if (r.status == CallIncidentStatus.Working)
+                {
+                    // İş hızı = olay yerindeki ekiplerin katkı toplamı (3 itfaiye = 3 kat hızlı)
+                    float rate = 0f;
+                    foreach (UnitType role in r.onSiteRoles) rate += r.RoleWeight(role);
+                    r.currentWorkRate = Mathf.Max(minimumWorkRate, rate);
+                    r.workDone += Time.deltaTime * r.currentWorkRate;
+                    if (r.workDone >= r.workRequired) ResolveIncident(r);
                     continue;
                 }
                 if (r.status != CallIncidentStatus.Waiting) continue;
@@ -299,6 +320,12 @@ namespace ZeroHour.Phase2.Calls
         /// <summary>Seçilen birimleri olay yerine gönderir. Yola çıkan araç sayısını döndürür.</summary>
         public int Dispatch(IncidentReport report, IList<UnitType> units)
         {
+            return Dispatch(report, units, null);
+        }
+
+        /// <param name="heliRoles">Her helikopterin rolü (ambulans / polis / itfaiye). Boşsa helikopter gerekli ekip rolünü alır.</param>
+        public int Dispatch(IncidentReport report, IList<UnitType> units, IList<UnitType> heliRoles)
+        {
             if (report == null || report.status != CallIncidentStatus.Waiting) return 0;
             if (AStarMovementTester.Instance == null || units.Count == 0) return 0;
 
@@ -307,6 +334,21 @@ namespace ZeroHour.Phase2.Calls
 
             report.status = CallIncidentStatus.Responding;
             report.sentUnits.AddRange(units);
+
+            int heliIndex = 0;
+            foreach (UnitType unit in units)
+            {
+                if (unit != UnitType.RescueHelicopter)
+                {
+                    report.sentRoles.Add(unit);
+                    continue;
+                }
+
+                UnitType role = (heliRoles != null && heliIndex < heliRoles.Count) ? heliRoles[heliIndex] : report.RequiredUnit;
+                report.heliRoles.Add(role);
+                report.sentRoles.Add(role);
+                heliIndex++;
+            }
             if (report.marker != null) report.marker.SetResponding();
 
             Debug.Log($"<color=cyan>[Incidents] 🚨 Case #{report.caseNumber}: {sent} birim sevk edildi.</color>");
@@ -326,10 +368,19 @@ namespace ZeroHour.Phase2.Calls
         {
             foreach (IncidentReport r in activeIncidents)
             {
-                if (r.status != CallIncidentStatus.Responding) continue;
+                if (r.status != CallIncidentStatus.Responding && r.status != CallIncidentStatus.Working) continue;
                 if ((r.sitePosition - siteTarget).sqrMagnitude > 0.01f) continue;
 
-                ResolveIncident(r);
+                // Helikopter kendisine seçilen rolün işini yapar (joker birim)
+                UnitType role = type;
+                if (type == UnitType.RescueHelicopter)
+                {
+                    role = r.helisArrived < r.heliRoles.Count ? r.heliRoles[r.helisArrived] : r.RequiredUnit;
+                    r.helisArrived++;
+                }
+
+                r.onSiteRoles.Add(role);
+                r.status = CallIncidentStatus.Working;
                 return;
             }
         }
@@ -338,7 +389,7 @@ namespace ZeroHour.Phase2.Calls
         {
             CityStatsManager stats = CityStatsManager.Instance;
 
-            if (report.sentUnits.Contains(report.RequiredUnit))
+            if (report.sentRoles.Contains(report.RequiredUnit))
             {
                 // Doğru ekip: herkes kurtarıldı
                 if (stats != null) stats.ResolveCiviliansAtRisk(report.injured);
@@ -363,6 +414,9 @@ namespace ZeroHour.Phase2.Calls
         {
             report.status = CallIncidentStatus.Closed;
             activeIncidents.Remove(report);
+
+            // Olay yerinde bekleyen / yolda olan araçlar üsse dönsün
+            if (AStarMovementTester.Instance != null) AStarMovementTester.Instance.ReleaseSite(report.sitePosition);
 
             if (report.marker != null)
             {

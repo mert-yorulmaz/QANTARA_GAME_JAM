@@ -98,6 +98,7 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 | **Kaza Dosyası `[-]` / `[+]`** | Gönderilecek birim sayısını seçme (Polis, Ambulans, İtfaiye, Helikopter) |
 | **DISPATCH / DISMISS CALL** | Seçili birimleri olay yerine sevk etme / çağrıyı kapatma (yaralılar kaybedilir) |
 | **ESC veya dosya dışına tıklama** | Kaza Dosyasını cezasız kapatma |
+| **Helikopter [+] → rol bölmesi** | Her helikopter için ambulans / polis / itfaiye logosundan birini seçme (joker birim o işi yapar) |
 
 ---
 

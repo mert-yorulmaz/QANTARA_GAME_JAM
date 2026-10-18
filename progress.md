@@ -368,3 +368,31 @@ Teknik kurallar (Faz 1, materyaller, NavMesh, asset silmeme, Input, UI çözün�
 
 ## ⚠️ Hâlâ Elle Test Edilmesi Gerekenler
 Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyarısı.
+
+---
+---
+
+# 🔄 GÜNCELLEME 5 — 18 Ekim 2026, ~04:30 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 5"TİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+
+## ✅ Yapılanlar (Play Mode'da Test Edildi)
+
+1. **Filo: her tipten birden fazla araç.** Sahnede her tipten 1 araç vardı. Polis / Ambulans / İtfaiye **4'er**, Helikopter **3** oldu (Inspector'dan `AStarMovementTester` → Filo Büyüklüğü). Ek kara araçları istasyonda konvoy mesafesinde arka arkaya NavMesh üzerine park eder. Helipad'li çatıya tek helikopter sığdığı için (13.7 × 12.3 m) ek helikopterler **en yakın geniş çatılara** park eder; bu çatılarda olay çıkmaz. *Test: HUD 4/4, 4/4, 4/4, 3/3.*
+2. **Araçlar %40 daha yavaş.** Tek çarpan (`speedMultiplier = 0.6`): kara aracı seyir hızı, ivme, takip frenindeki en düşük hız, helikopter uçuş / kalkış / iniş hızı. Takip mesafesi (9–10.5 m) ve fren mantığı değişmedi.
+3. **Olay yerinde iş süresi + ekip sayısıyla hızlanma.** Araçlar artık varınca hemen dönmez; iş bitene kadar olay yerinde bekler, bitince kazasız ters sırayla döner.
+   - Taban iş süresi (1 gerekli ekiple): yangın **24 sn**, deprem/çökme **30 sn**.
+   - İş hızı = olay yerindeki ekiplerin katkı toplamı: **gerekli ekip 1x**, olası (yardımcı) ekip 0.5x, ilgisiz ekip 0. Yani **3 itfaiye = 3 kat hızlı**. *Test: yangına 3 itfaiye → hız 3x, 24 sn'lik iş ~8 sn'de bitti.*
+   - Rozet ekip çalışırken `WORK 0:12` şeklinde kalan süreyi gösterir.
+   - Hiç yardımcı olmayan ekip gönderilirse iş yine çok yavaş (0.25x) ilerler; gerekli ekip hiç gönderilmediyse sonunda yaralıların yarısı kaybedilir.
+4. **Joker helikopter.** Kaza Dosyasında helikoptere `[+]` yapınca helikopter satırında bir bölme açılır: **ambulans / polis / itfaiye** logoları. Her helikopter için ayrı bölme (en fazla 3); her biri farklı rol seçebilir. Varsayılan rol olayın gerekli ekibidir. Helikopter seçilen rolün işini yapar (itfaiye rolünde yangını söndürür vb.). Aynı olaya giden helikopterler havada 8 m aralıkla durur. *Test: 2 helikopter (itfaiye + polis) → roller doğru taşındı, yangında itfaiye rolü 1x, polis rolü 0x katkı verdi; tüm araçlar üsse döndü (15/15).*
+
+## 🧾 Dosyalar
+- **Değişen:** `AStarMovementTester.cs` (filo klonlama, hız çarpanı, olay yerinde bekleme/serbest bırakma, helikopter bekleme noktaları), `IncidentBoard.cs` (iş süresi ve hız, helikopter rolleri, araçları serbest bırakma), `IncidentReport.cs`, `IncidentMarker.cs` (`WORK` göstergesi), `IncidentFileUI.cs` (helikopter rol bölmeleri), `CallSystemSceneBuilder.cs`, `SampleScene.unity`, `README.md` (kontroller).
+- **Doğrulama:** Derleme 0 hata. Orijinal A* test modu (`StartAStarTest`) olay yerinde bekleme kullanmaz, eski davranışını korur.
+
+## ⚠️ Bilinmesi Gerekenler
+- Daha fazla araç = daha yoğun trafik. Testlerde kilitlenme görülmedi, ama 10+ aracın aynı anda yolda olduğu durum uzun süreli test edilmedi.
+- Ek araçlar oyun başında kodla oluşturulur (sahnede görünmezler, Play'de çıkarlar).
+- Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, çağrı sesleri.

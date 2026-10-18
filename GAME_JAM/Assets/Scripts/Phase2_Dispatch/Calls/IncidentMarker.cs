@@ -83,7 +83,7 @@ namespace ZeroHour.Phase2.Calls
             transform.localScale = Vector3.one * (worldSize / spriteWorldSize) * pulse;
 
             // Sine salınımı (yukarı-aşağı)
-            float speed = Report.status == CallIncidentStatus.Responding ? bobSpeed * 0.4f : bobSpeed;
+            float speed = Report.status == CallIncidentStatus.Waiting ? bobSpeed : bobSpeed * 0.4f;
             float bob = Mathf.Sin((Time.time + bobOffset) * speed) * bobAmplitude * worldSize;
             transform.position = Report.markerAnchor + Vector3.up * (worldSize * 0.6f + bob);
 
@@ -98,6 +98,16 @@ namespace ZeroHour.Phase2.Calls
             {
                 countdownText.text = "<mark=#0B0F14CC> EN ROUTE </mark>";
                 countdownText.color = CountdownEnRoute;
+                return;
+            }
+
+            if (Report.status == CallIncidentStatus.Working)
+            {
+                // Olay yerinde iş: kalan süre ekip sayısıyla kısalır
+                int left = Mathf.CeilToInt(Report.WorkSecondsLeft);
+                countdownText.text = $"<mark=#0B0F14CC> WORK {left / 60}:{left % 60:00} </mark>";
+                countdownText.color = CountdownEnRoute;
+                if (spriteRenderer != null) spriteRenderer.color = Color.white;
                 return;
             }
 

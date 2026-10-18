@@ -31,6 +31,20 @@ namespace ZeroHour.Phase2.Calls
             [NonSerialized] public int selected;
         }
 
+        /// <summary>Seçilen her helikopter için bir bölme: ambulans / polis / itfaiye rolünden biri seçilir.</summary>
+        [Serializable]
+        public class HeliRoleSlot
+        {
+            public GameObject root;
+            public Button ambulanceButton;
+            public Button policeButton;
+            public Button fireButton;
+            public Graphic ambulanceSelected;
+            public Graphic policeSelected;
+            public Graphic fireSelected;
+            [NonSerialized] public UnitType role;
+        }
+
         [Header("Kök")]
         [SerializeField] private GameObject root;
         [SerializeField] private Button backdropButton;
@@ -51,6 +65,9 @@ namespace ZeroHour.Phase2.Calls
 
         [Header("Birim Tablosu")]
         [SerializeField] private List<UnitRow> unitRows = new List<UnitRow>();
+
+        [Header("Joker Helikopter Rolleri")]
+        [SerializeField] private List<HeliRoleSlot> heliRoleSlots = new List<HeliRoleSlot>();
 
         [Header("Butonlar")]
         [SerializeField] private Button dismissButton;
@@ -88,6 +105,14 @@ namespace ZeroHour.Phase2.Calls
                 UnitRow captured = row;
                 if (row.minusButton != null) row.minusButton.onClick.AddListener(() => ChangeCount(captured, -1));
                 if (row.plusButton != null) row.plusButton.onClick.AddListener(() => ChangeCount(captured, +1));
+            }
+
+            foreach (HeliRoleSlot slot in heliRoleSlots)
+            {
+                HeliRoleSlot captured = slot;
+                if (slot.ambulanceButton != null) slot.ambulanceButton.onClick.AddListener(() => SetHeliRole(captured, UnitType.Ambulance));
+                if (slot.policeButton != null) slot.policeButton.onClick.AddListener(() => SetHeliRole(captured, UnitType.PoliceCruiser));
+                if (slot.fireButton != null) slot.fireButton.onClick.AddListener(() => SetHeliRole(captured, UnitType.FireEngine));
             }
 
             if (root != null) root.SetActive(false);
@@ -151,6 +176,9 @@ namespace ZeroHour.Phase2.Calls
             current = report;
             foreach (UnitRow row in unitRows) row.selected = 0;
 
+            // Helikopter rolü varsayılanı: olayı çözen ekip (yangın → itfaiye, çökme → ambulans)
+            foreach (HeliRoleSlot slot in heliRoleSlots) slot.role = report.RequiredUnit;
+
             SetText(caseTabText, $"CASE #{report.caseNumber:0000}");
             SetText(stampText, report.urgent ? "URGENT" : "ROUTINE");
             SetText(incidentValueText, report.incidentTitle);
@@ -205,21 +233,27 @@ namespace ZeroHour.Phase2.Calls
             AStarMovementTester fleet = AStarMovementTester.Instance;
             int totalSelected = 0;
 
+            int helisSelected = 0;
             foreach (UnitRow row in unitRows)
             {
                 int free = fleet != null ? fleet.GetAvailableCount(row.unitType) : 0;
-                row.selected = Mathf.Clamp(row.selected, 0, free);
+                // Helikopter sayısı rol bölmesi sayısını aşamaz
+                int max = row.unitType == UnitType.RescueHelicopter ? Mathf.Min(free, heliRoleSlots.Count) : free;
+                row.selected = Mathf.Clamp(row.selected, 0, max);
+                if (row.unitType == UnitType.RescueHelicopter) helisSelected = row.selected;
                 totalSelected += row.selected;
 
                 SetText(row.freeText, free.ToString());
                 SetText(row.countText, row.selected.ToString());
                 if (row.minusButton != null) row.minusButton.interactable = waiting && row.selected > 0;
-                if (row.plusButton != null) row.plusButton.interactable = waiting && row.selected < free;
+                if (row.plusButton != null) row.plusButton.interactable = waiting && row.selected < max;
             }
+
+            RefreshHeliSlots(waiting ? helisSelected : 0);
 
             string timeLeft = waiting
                 ? $" · {Mathf.CeilToInt(Mathf.Max(0f, current.timeRemaining))}s left"
-                : " · UNITS EN ROUTE";
+                : current.status == CallIncidentStatus.Working ? " · UNITS ON SCENE" : " · UNITS EN ROUTE";
             SetText(callInfoText, $"Call {current.callTime} · Line {current.line}{timeLeft}");
 
             bool canDispatch = waiting && totalSelected > 0;
@@ -227,6 +261,33 @@ namespace ZeroHour.Phase2.Calls
             if (dispatchActiveFill != null) dispatchActiveFill.enabled = canDispatch;
             if (dispatchLabel != null) dispatchLabel.color = canDispatch ? CreamColor : new Color(CreamColor.r, CreamColor.g, CreamColor.b, 0.8f);
             if (dismissButton != null) dismissButton.interactable = waiting;
+        }
+
+        private void RefreshHeliSlots(int visibleCount)
+        {
+            for (int i = 0; i < heliRoleSlots.Count; i++)
+            {
+                HeliRoleSlot slot = heliRoleSlots[i];
+                bool visible = i < visibleCount;
+                if (slot.root != null && slot.root.activeSelf != visible) slot.root.SetActive(visible);
+                if (!visible) continue;
+
+                SetSelected(slot.ambulanceSelected, slot.role == UnitType.Ambulance);
+                SetSelected(slot.policeSelected, slot.role == UnitType.PoliceCruiser);
+                SetSelected(slot.fireSelected, slot.role == UnitType.FireEngine);
+            }
+        }
+
+        private static void SetSelected(Graphic highlight, bool selected)
+        {
+            if (highlight != null) highlight.enabled = selected;
+        }
+
+        private void SetHeliRole(HeliRoleSlot slot, UnitType role)
+        {
+            if (current == null || current.status != CallIncidentStatus.Waiting) return;
+            slot.role = role;
+            Refresh();
         }
 
         private void ChangeCount(UnitRow row, int delta)
@@ -262,12 +323,17 @@ namespace ZeroHour.Phase2.Calls
             if (current == null || IncidentBoard.Instance == null) return;
 
             List<UnitType> units = new List<UnitType>();
+            List<UnitType> heliRoles = new List<UnitType>();
             foreach (UnitRow row in unitRows)
             {
-                for (int i = 0; i < row.selected; i++) units.Add(row.unitType);
+                for (int i = 0; i < row.selected; i++)
+                {
+                    units.Add(row.unitType);
+                    if (row.unitType == UnitType.RescueHelicopter && i < heliRoleSlots.Count) heliRoles.Add(heliRoleSlots[i].role);
+                }
             }
 
-            if (IncidentBoard.Instance.Dispatch(current, units) > 0) Close();
+            if (IncidentBoard.Instance.Dispatch(current, units, heliRoles) > 0) Close();
         }
 
         private void OnDismissClicked()
