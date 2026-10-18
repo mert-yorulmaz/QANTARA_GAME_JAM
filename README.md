@@ -99,6 +99,8 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 | **DISPATCH / DISMISS CALL** | Seçili birimleri olay yerine sevk etme / çağrıyı kapatma (yaralılar kaybedilir) |
 | **ESC veya dosya dışına tıklama** | Kaza Dosyasını cezasız kapatma |
 | **Helikopter [+] → rol bölmesi** | Her helikopter için ambulans / polis / itfaiye logosundan birini seçme (joker birim o işi yapar) |
+| **Sol üstteki dişli veya ESC** | Ayarlar (ses, müzik, dil, tam ekran); açıkken oyun durur |
+| **Sol üst sayaç** | Vardiyanın kalan süresi (3:00) ve oyun saati (02:00 → 05:00). Bitince vardiya sonu karnesi açılır, PLAY AGAIN ile yeniden başlanır |
 
 ---
 

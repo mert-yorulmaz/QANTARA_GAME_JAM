@@ -105,10 +105,18 @@ namespace ZeroHour.Phase2.UI
         private void Update()
         {
             // ESC tuşuna basıldığında Ayarlar panelini aç / kapat
-            if (IsEscapePressed())
+            if (IsEscapePressed() && !IsEscapeUsedByIncidentFile())
             {
                 ToggleSettings();
             }
+        }
+
+        // Kaza Dosyası açıkken ESC sadece dosyayı kapatır, ayarları açmaz
+        private static bool IsEscapeUsedByIncidentFile()
+        {
+            var file = ZeroHour.Phase2.Calls.IncidentFileUI.Instance;
+            if (file != null && file.IsOpen) return true;
+            return ZeroHour.Phase2.Calls.IncidentFileUI.EscConsumedFrame == Time.frameCount;
         }
 
         private bool IsEscapePressed()
@@ -133,6 +141,12 @@ namespace ZeroHour.Phase2.UI
         {
             if (settingsPanelRoot != null)
             {
+                if (!settingsPanelRoot.activeSelf)
+                {
+                    // Ayarlar açıkken oyun durur
+                    timeScaleBeforeOpen = Time.timeScale;
+                    Time.timeScale = 0f;
+                }
                 settingsPanelRoot.SetActive(true);
                 UpdateAllUIElements();
             }
@@ -143,9 +157,12 @@ namespace ZeroHour.Phase2.UI
             SaveSettings();
             if (settingsPanelRoot != null)
             {
+                if (settingsPanelRoot.activeSelf) Time.timeScale = timeScaleBeforeOpen;
                 settingsPanelRoot.SetActive(false);
             }
         }
+
+        private float timeScaleBeforeOpen = 1f;
 
         public void ToggleSettings()
         {

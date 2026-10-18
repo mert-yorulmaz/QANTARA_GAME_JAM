@@ -90,7 +90,7 @@ namespace ZeroHour.Phase2.Editor
             boardSo.FindProperty("collapseMarkerSprite").objectReferenceValue = collapseMarker;
             boardSo.FindProperty("unattendedTimeout").floatValue = 45f;
             boardSo.FindProperty("respondingTimeout").floatValue = 60f;
-            boardSo.FindProperty("maxActiveIncidents").intValue = 3;
+            boardSo.FindProperty("maxActiveIncidents").intValue = 5;
             SerializedProperty excluded = boardSo.FindProperty("excludedBuildings");
             excluded.arraySize = stationBuildings.Count;
             for (int i = 0; i < stationBuildings.Count; i++) excluded.GetArrayElementAtIndex(i).objectReferenceValue = stationBuildings[i];
@@ -101,12 +101,12 @@ namespace ZeroHour.Phase2.Editor
             callAudio.spatialBlend = 0f;
             IncomingCallController calls = GetOrAdd<IncomingCallController>(systemObj);
 
-            // Çağrılar üst üste gelmesin: 20–30 sn arayla, bekleyen her olay için +6 sn
+            // Zorluk: çağrılar ~%55 daha sık (20–30 sn → 12–19 sn), bekleyen her olay için +4 sn
             SerializedObject callTimingSo = new SerializedObject(calls);
             callTimingSo.FindProperty("firstCallDelay").floatValue = 4f;
-            callTimingSo.FindProperty("minInterval").floatValue = 20f;
-            callTimingSo.FindProperty("maxInterval").floatValue = 30f;
-            callTimingSo.FindProperty("extraDelayPerWaitingIncident").floatValue = 6f;
+            callTimingSo.FindProperty("minInterval").floatValue = 12f;
+            callTimingSo.FindProperty("maxInterval").floatValue = 19f;
+            callTimingSo.FindProperty("extraDelayPerWaitingIncident").floatValue = 4f;
             callTimingSo.ApplyModifiedPropertiesWithoutUndo();
 
             // 3. Canvas
@@ -129,6 +129,12 @@ namespace ZeroHour.Phase2.Editor
             BuildHud(canvasObj.transform, unitsPanel, populationPanel);
             BuildCallCard(canvasObj.transform, calls, callAudio, ringingSprite, listeningSprite, fillSprite);
             BuildIncidentFile(canvasObj.transform, filePanel);
+
+            SettingsUI settings = BuildSettings(canvasObj.transform);
+            ShiftClock shiftClock = GetOrAdd<ShiftClock>(systemObj);
+            BuildShiftHud(canvasObj.transform, shiftClock, settings);
+            BuildDebrief(canvasObj.transform, shiftClock);
+            settings.transform.SetAsLastSibling(); // Ayarlar her şeyin üstünde
 
             // 4. Kaydet
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -321,8 +327,9 @@ namespace ZeroHour.Phase2.Editor
             AssignVehicle(so, "fireTruck", "Vehicle_Bus_color02_separate");
             AssignVehicle(so, "helicopter", "HelicopterV2");
 
-            // Oyun %40 daha yavaş; filo: her kara aracından 4, helikopterden 3 (istasyonda klonlanır)
-            so.FindProperty("speedMultiplier").floatValue = 0.6f;
+            // Hız: orijinalin %72'si (%40 yavaşlatmanın üstüne %20 hızlandırma: 0.6 × 1.2);
+            // filo: her kara aracından 4, helikopterden 3 (istasyonda klonlanır)
+            so.FindProperty("speedMultiplier").floatValue = 0.72f;
             so.FindProperty("policeCount").intValue = 4;
             so.FindProperty("ambulanceCount").intValue = 4;
             so.FindProperty("fireTruckCount").intValue = 4;
@@ -798,6 +805,248 @@ namespace ZeroHour.Phase2.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
 
             root.gameObject.SetActive(false);
+        }
+
+        // ==========================================
+        // VARDİYA SAYACI (sol üst) + AYARLAR DİŞLİSİ
+        // ==========================================
+
+        private static readonly Color HudPanelColor = new Color(0.227f, 0.227f, 0.227f, 1f);
+        private static readonly Color HudBorderColor = new Color(0.09f, 0.09f, 0.09f, 1f);
+        private static readonly Color SettingsBlue = new Color(0.31f, 0.76f, 0.97f, 1f);
+        private static readonly Color ToggleTextIdle = new Color(0.55f, 0.65f, 0.78f, 1f);
+
+        private static void BuildShiftHud(Transform canvas, ShiftClock clock, SettingsUI settings)
+        {
+            Image panel = NewImage("HUD_Shift", canvas, null, HudPanelColor);
+            panel.raycastTarget = false;
+            Outline border = panel.gameObject.AddComponent<Outline>();
+            border.effectColor = HudBorderColor;
+            border.effectDistance = new Vector2(2f, -2f);
+            RectTransform rt = panel.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            const float ShiftPanelWidth = 440f;
+            rt.sizeDelta = new Vector2(ShiftPanelWidth, 136);
+            rt.anchoredPosition = new Vector2(20f, -20f);
+            rt.localScale = Vector3.one * UiScale;
+
+            NewText("Title", rt, "NIGHT SHIFT", pixelFont, 28, HudHeader, 24, 12, 420, 48, TextAlignmentOptions.Left);
+            TMP_Text timeLeft = NewText("TimeLeft", rt, "3:00", pixelFont, 64, HudGreen, 24, 48, 240, 124, TextAlignmentOptions.Left);
+            TMP_Text clockText = NewText("Clock", rt, "02:00 AM", readFont, 32, HudLabel, 250, 66, 420, 112, TextAlignmentOptions.Right);
+
+            // Ayarlar dişlisi: vardiya panelinin sağında
+            Image gearBg = NewImage("SettingsButton", canvas, null, HudPanelColor);
+            Outline gearBorder = gearBg.gameObject.AddComponent<Outline>();
+            gearBorder.effectColor = HudBorderColor;
+            gearBorder.effectDistance = new Vector2(2f, -2f);
+            RectTransform gearRt = gearBg.rectTransform;
+            gearRt.anchorMin = gearRt.anchorMax = new Vector2(0f, 1f);
+            gearRt.pivot = new Vector2(0f, 1f);
+            gearRt.sizeDelta = new Vector2(136, 136);
+            gearRt.anchoredPosition = new Vector2(20f + ShiftPanelWidth * UiScale + 12f, -20f);
+            gearRt.localScale = Vector3.one * UiScale;
+            Button gearButton = gearBg.gameObject.AddComponent<Button>();
+            gearButton.targetGraphic = gearBg;
+            Image gearIcon = NewImage("Icon", gearRt, LoadSpriteAt("Assets/UI/Dispatch_UI_Assets/05_sprites/gear_preview.png", true), Color.white);
+            Place(gearIcon.rectTransform, 28, 28, 108, 108);
+            gearIcon.preserveAspect = true;
+            gearIcon.raycastTarget = false;
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(gearButton.onClick, settings.OpenSettings);
+
+            SerializedObject so = new SerializedObject(clock);
+            so.FindProperty("shiftDurationSeconds").floatValue = 180f;
+            so.FindProperty("timeLeftText").objectReferenceValue = timeLeft;
+            so.FindProperty("clockText").objectReferenceValue = clockText;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ==========================================
+        // VARDİYA SONU KARNESİ
+        // ==========================================
+
+        private static void BuildDebrief(Transform canvas, ShiftClock clock)
+        {
+            RectTransform root = NewRect("ShiftDebrief", canvas);
+            Stretch(root);
+
+            Image backdrop = NewImage("Backdrop", root, null, new Color(0.02f, 0.03f, 0.04f, 0.78f));
+            Stretch(backdrop.rectTransform);
+
+            Image panel = NewImage("Panel", root, null, HudPanelColor);
+            panel.raycastTarget = true;
+            Outline border = panel.gameObject.AddComponent<Outline>();
+            border.effectColor = HudBorderColor;
+            border.effectDistance = new Vector2(3f, -3f);
+            RectTransform rt = panel.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(1120, 760);
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one * UiScale;
+
+            NewText("Title", rt, "SHIFT OVER · 05:00 AM", pixelFont, 44, HudHeader, 42, 36, 1078, 100, TextAlignmentOptions.Left);
+            TMP_Text stats = NewText("Stats", rt, "Survivors 150 / 150", pixelFont, 40, HudLabel, 42, 160, 720, 560, TextAlignmentOptions.TopLeft);
+            stats.lineSpacing = 70f; // Piksel fontun satır yüksekliği dar; satırlar birbirine binmesin
+            NewText("GradeLabel", rt, "GRADE", pixelFont, 36, HudHeader, 760, 150, 1078, 200, TextAlignmentOptions.Center);
+            TMP_Text grade = NewText("Grade", rt, "S", pixelFont, 220, HudGreen, 760, 200, 1078, 500, TextAlignmentOptions.Center);
+
+            Image againBg = NewImage("PlayAgainButton", rt, null, SettingsBlue);
+            Place(againBg.rectTransform, 718, 620, 1078, 708);
+            Button again = againBg.gameObject.AddComponent<Button>();
+            again.targetGraphic = againBg;
+            NewText("Label", againBg.transform, "PLAY AGAIN", pixelFont, 40, AcceptInk, 0, 0, 360, 88, TextAlignmentOptions.Center);
+
+            SerializedObject so = new SerializedObject(clock);
+            so.FindProperty("debriefRoot").objectReferenceValue = root.gameObject;
+            so.FindProperty("debriefStatsText").objectReferenceValue = stats;
+            so.FindProperty("debriefGradeText").objectReferenceValue = grade;
+            so.FindProperty("playAgainButton").objectReferenceValue = again;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            root.gameObject.SetActive(false);
+        }
+
+        // ==========================================
+        // AYARLAR (Yağız'ın settings_panel_dark tasarımı → mevcut SettingsUI)
+        // ==========================================
+
+        private static SettingsUI BuildSettings(Transform canvas)
+        {
+            const string PartsDir = "Assets/UI/Dispatch_UI_Assets/03_ui_components/settings_parts_dark/";
+            Sprite panelSprite = LoadSprite("settings_panel_dark.png");
+            Sprite blockFilled = LoadSpriteAt(PartsDir + "volume_block_filled.png", false);
+            Sprite blockEmpty = LoadSpriteAt(PartsDir + "volume_block_empty.png", false);
+            Sprite toggleHalf = LoadSpriteAt(PartsDir + "toggle_selected_half.png", false);
+
+            RectTransform holder = NewRect("SettingsUI", canvas);
+            Stretch(holder);
+            SettingsUI settings = holder.gameObject.AddComponent<SettingsUI>();
+
+            RectTransform root = NewRect("Root", holder);
+            Stretch(root);
+            Image backdrop = NewImage("Backdrop", root, null, new Color(0.02f, 0.03f, 0.04f, 0.6f));
+            Stretch(backdrop.rectTransform);
+
+            Image panelImage = NewImage("Panel", root, panelSprite, Color.white);
+            panelImage.raycastTarget = true;
+            RectTransform panel = panelImage.rectTransform;
+            panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
+            panel.pivot = new Vector2(0.5f, 0.5f);
+            panel.sizeDelta = new Vector2(1120, 854);
+            panel.anchoredPosition = Vector2.zero;
+            panel.localScale = Vector3.one * UiScale;
+
+            NewText("Title", panel, "SETTINGS", pixelFont, 40, HudHeader, 42, 40, 600, 92, TextAlignmentOptions.Left);
+            Button closeX = NewButton("CloseX", panel, 1018, 30, 1090, 102);
+
+            string[] labels = { "Sound", "Music", "Language", "Fullscreen" };
+            float[] rowY = { 208, 346, 484, 622 };
+            for (int i = 0; i < labels.Length; i++)
+            {
+                NewText($"Label_{labels[i]}", panel, labels[i], readFont, 34, HudLabel, 136, rowY[i] - 28, 520, rowY[i] + 28, TextAlignmentOptions.Left);
+            }
+
+            (Slider soundSlider, TMP_Text soundPercent) = BuildVolumeRow(panel, "Sound", rowY[0], blockFilled, blockEmpty);
+            (Slider musicSlider, TMP_Text musicPercent) = BuildVolumeRow(panel, "Music", rowY[1], blockFilled, blockEmpty);
+
+            Button prevLang = NewButton("LanguagePrev", panel, 630, 448, 702, 520);
+            NewText("Label", prevLang.transform, "<", pixelFont, 36, HudLabel, 0, 0, 72, 72, TextAlignmentOptions.Center);
+            Button nextLang = NewButton("LanguageNext", panel, 1006, 448, 1078, 520);
+            NewText("Label", nextLang.transform, ">", pixelFont, 36, HudLabel, 0, 0, 72, 72, TextAlignmentOptions.Center);
+            TMP_Text languageText = NewText("Language", panel, "ENGLISH", pixelFont, 44, Color.white, 702, 450, 1006, 518, TextAlignmentOptions.Center);
+
+            // Tam ekran OFF / ON: seçili tarafın dolgusu (toggle_selected_half) SettingsUI tarafından açılıp kapanır
+            NewText("OffIdle", panel, "OFF", pixelFont, 40, ToggleTextIdle, 788, 587, 932, 658, TextAlignmentOptions.Center);
+            NewText("OnIdle", panel, "ON", pixelFont, 40, ToggleTextIdle, 932, 587, 1076, 658, TextAlignmentOptions.Center);
+            Image offHighlight = NewImage("OffSelected", panel, toggleHalf, Color.white);
+            Place(offHighlight.rectTransform, 788, 586, 932, 660);
+            offHighlight.raycastTarget = false;
+            NewText("Label", offHighlight.transform, "OFF", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center);
+            Image onHighlight = NewImage("OnSelected", panel, toggleHalf, Color.white);
+            Place(onHighlight.rectTransform, 932, 586, 1076, 660);
+            onHighlight.raycastTarget = false;
+            NewText("Label", onHighlight.transform, "ON", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center);
+            Button offButton = NewButton("FullscreenOff", panel, 788, 587, 932, 658);
+            Button onButton = NewButton("FullscreenOn", panel, 932, 587, 1076, 658);
+
+            Button defaults = NewButton("DefaultsButton", panel, 42, 728, 342, 816);
+            NewText("Label", defaults.transform, "DEFAULTS", pixelFont, 40, HudLabel, 0, 0, 300, 88, TextAlignmentOptions.Center);
+            Button back = NewButton("BackButton", panel, 850, 728, 1078, 816);
+            NewText("Label", back.transform, "BACK", pixelFont, 40, AcceptInk, 0, 0, 228, 88, TextAlignmentOptions.Center);
+
+            SerializedObject so = new SerializedObject(settings);
+            so.FindProperty("settingsPanelRoot").objectReferenceValue = root.gameObject;
+            so.FindProperty("soundSlider").objectReferenceValue = soundSlider;
+            so.FindProperty("soundPercentText").objectReferenceValue = soundPercent;
+            so.FindProperty("musicSlider").objectReferenceValue = musicSlider;
+            so.FindProperty("musicPercentText").objectReferenceValue = musicPercent;
+            so.FindProperty("languageText").objectReferenceValue = languageText;
+            so.FindProperty("prevLanguageButton").objectReferenceValue = prevLang;
+            so.FindProperty("nextLanguageButton").objectReferenceValue = nextLang;
+            so.FindProperty("fullscreenOffButton").objectReferenceValue = offButton;
+            so.FindProperty("fullscreenOnButton").objectReferenceValue = onButton;
+            so.FindProperty("fullscreenOffHighlight").objectReferenceValue = offHighlight;
+            so.FindProperty("fullscreenOnHighlight").objectReferenceValue = onHighlight;
+            so.FindProperty("defaultsButton").objectReferenceValue = defaults;
+            so.FindProperty("backButton").objectReferenceValue = back;
+            so.FindProperty("closeXButton").objectReferenceValue = closeX;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            root.gameObject.SetActive(false);
+            return settings;
+        }
+
+        private static (Slider, TMP_Text) BuildVolumeRow(RectTransform panel, string name, float rowY, Sprite filled, Sprite empty)
+        {
+            const int BlockCount = 10;
+            const float BlockWidth = 32f, BlockGap = 6f, BlockHeight = 50f;
+            float x0 = 548f;
+            float width = BlockCount * BlockWidth + (BlockCount - 1) * BlockGap;
+
+            // Görünmez Slider: tıklama / sürükleme alanı blok çubuğunun tamamı
+            Image hit = NewImage($"{name}Slider", panel, null, new Color(1f, 1f, 1f, 0f));
+            Place(hit.rectTransform, x0, rowY - BlockHeight * 0.5f, x0 + width, rowY + BlockHeight * 0.5f);
+            hit.raycastTarget = true;
+
+            RectTransform fillArea = NewRect("FillArea", hit.rectTransform);
+            Stretch(fillArea);
+            Image fill = NewImage("Fill", fillArea, null, new Color(1f, 1f, 1f, 0f));
+            Stretch(fill.rectTransform);
+            fill.raycastTarget = false;
+
+            Slider slider = hit.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill.rectTransform;
+            slider.targetGraphic = hit;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.wholeNumbers = false;
+            slider.transition = Selectable.Transition.None;
+            Navigation nav = slider.navigation;
+            nav.mode = Navigation.Mode.None;
+            slider.navigation = nav;
+
+            Image[] blocks = new Image[BlockCount];
+            for (int i = 0; i < BlockCount; i++)
+            {
+                float bx = i * (BlockWidth + BlockGap);
+                blocks[i] = NewImage($"Block{i + 1}", hit.rectTransform, empty, Color.white);
+                Place(blocks[i].rectTransform, bx, 0f, bx + BlockWidth, BlockHeight);
+                blocks[i].raycastTarget = false;
+            }
+
+            VolumeBlockBar bar = hit.gameObject.AddComponent<VolumeBlockBar>();
+            SerializedObject so = new SerializedObject(bar);
+            SerializedProperty blockProp = so.FindProperty("blocks");
+            blockProp.arraySize = BlockCount;
+            for (int i = 0; i < BlockCount; i++) blockProp.GetArrayElementAtIndex(i).objectReferenceValue = blocks[i];
+            so.FindProperty("filledSprite").objectReferenceValue = filled;
+            so.FindProperty("emptySprite").objectReferenceValue = empty;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            TMP_Text percent = NewText($"{name}Percent", panel, "70%", pixelFont, 44, Color.white, 940, rowY - 30, 1078, rowY + 30, TextAlignmentOptions.Right);
+            return (slider, percent);
         }
 
         // ==========================================

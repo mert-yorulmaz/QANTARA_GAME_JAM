@@ -145,6 +145,16 @@ namespace ZeroHour.Phase2.Calls
             audioSource.Play();
         }
 
+        /// <summary>Vardiya bitince: çalan / dinlenen çağrıyı cezasız kapatır ve yeni çağrı üretmez.</summary>
+        public void StopCalls()
+        {
+            if (audioSource != null) audioSource.Stop();
+            ShowCard(ringingCard, false);
+            ShowCard(listeningCard, false);
+            state = CallState.Idle;
+            enabled = false;
+        }
+
         public void DeclineCall()
         {
             if (state != CallState.Ringing) return;

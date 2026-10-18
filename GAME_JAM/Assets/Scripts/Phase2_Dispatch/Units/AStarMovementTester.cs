@@ -74,6 +74,10 @@ namespace ZeroHour.Phase2.Units
             public bool holdAtSite = false;
             public bool released = false;
             public Vector3 hoverOffset;   // Aynı olaya giden helikopterler üst üste binmesin
+
+            // Takılma kurtarıcısı: çok araçlı sıkışmalarda (3+ araçlık yol verme döngüsü) radarı kısa süre yok say
+            public float stuckTime;
+            public float radarBypassUntil;
         }
 
         private readonly List<VehicleTestState> vehicleStates = new List<VehicleTestState>();
@@ -778,11 +782,38 @@ namespace ZeroHour.Phase2.Units
         private bool ShouldYieldTo(VehicleTestState me, VehicleTestState ahead)
         {
             if (ahead == null) return false;
+            if (Time.time < me.radarBypassUntil) return false; // Takılma kurtarıcısı aktif
 
             VehicleTestState theirAhead = GetVehicleAheadInMyPath(ahead, out _);
             if (theirAhead != me) return true;
 
             return vehicleStates.IndexOf(me) > vehicleStates.IndexOf(ahead);
+        }
+
+        private const float StuckBypassSeconds = 2.5f;     // Bu kadar duran araç radarı geçici olarak yok sayar
+        private const float StuckBypassDuration = 2.5f;
+        private const float StuckJoinQueueSeconds = 1.2f;  // Olay yerine yakın takılan araç olduğu yerde sıraya girer
+        private const float StuckJoinQueueRadius = 45f;
+
+        /// <summary>
+        /// Yolda (gidiş / dönüş) hareket etmeyen aracın süresini sayar. Normal takip/fren akışını değiştirmez;
+        /// sadece 2.5 sn'den uzun süren sıkışmalarda radarı 2.5 sn kapatır (NavMesh çarpışma önleyici devrede kalır).
+        /// </summary>
+        private void UpdateStuckRecovery(VehicleTestState state, NavMeshAgent agent, List<GameObject> queue)
+        {
+            bool parked = !state.returning && queue.Contains(state.obj);
+            if (parked || agent.velocity.sqrMagnitude > 0.25f)
+            {
+                state.stuckTime = 0f;
+                return;
+            }
+
+            state.stuckTime += Time.deltaTime;
+            if (state.stuckTime >= StuckBypassSeconds && Time.time >= state.radarBypassUntil)
+            {
+                state.radarBypassUntil = Time.time + StuckBypassDuration;
+                state.stuckTime = 0f;
+            }
         }
 
         private void UpdateGroundAgentMovement(VehicleTestState state)
@@ -804,6 +835,8 @@ namespace ZeroHour.Phase2.Units
             targetPos.y = 0f;
             float distToTarget = Vector3.Distance(myPos, targetPos);
 
+            UpdateStuckRecovery(state, agent, parkedAtTarget);
+
             if (!state.returning)
             {
                 // DİNAMİK OLAY YERİ PARK KUYRUĞU:
@@ -813,12 +846,15 @@ namespace ZeroHour.Phase2.Units
 
                 bool isAlreadyParked = parkedAtTarget.Contains(state.obj);
 
+                // Olay yerine yakınken başka araçların arkasında takıldıysa olduğu yerde sıraya girer
+                bool stuckNearSite = distToTarget <= StuckJoinQueueRadius && state.stuckTime >= StuckJoinQueueSeconds;
+
                 if (!isAlreadyParked)
                 {
                     if (parkedAtTarget.Count == 0)
                     {
                         // İlk varan araç: Hedefe doğrudan yaklaşınca 1. sırada park eder
-                        if (distToTarget <= 3.5f || (!agent.pathPending && agent.remainingDistance <= 2.5f))
+                        if (distToTarget <= 3.5f || (!agent.pathPending && agent.remainingDistance <= 2.5f) || stuckNearSite)
                         {
                             parkedAtTarget.Add(state.obj);
                             isAlreadyParked = true;
@@ -838,7 +874,7 @@ namespace ZeroHour.Phase2.Units
                         float distToLead = Vector3.Distance(myPos, leadPos);
 
                         // Önündeki park etmiş araca safeDist (10.5m) kadar yaklaşınca nizami sıraya girip durur
-                        if (distToLead <= safeDistToLead + 0.5f)
+                        if (distToLead <= safeDistToLead + 0.5f || stuckNearSite)
                         {
                             parkedAtTarget.Add(state.obj);
                             isAlreadyParked = true;

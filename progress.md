@@ -396,3 +396,32 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Daha fazla araç = daha yoğun trafik. Testlerde kilitlenme görülmedi, ama 10+ aracın aynı anda yolda olduğu durum uzun süreli test edilmedi.
 - Ek araçlar oyun başında kodla oluşturulur (sahnede görünmezler, Play'de çıkarlar).
 - Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, çağrı sesleri.
+
+---
+---
+
+# 🔄 GÜNCELLEME 6 — 18 Ekim 2026, ~05:15 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 6"DIR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+> **Düzeltme:** Güncelleme 5'teki "Testlerde kilitlenme görülmedi" notu, 15 aracın aynı olaya gönderildiği senaryoyu kapsamıyordu; kullanıcı bu senaryoda kilitlenme buldu (aşağıda düzeltildi).
+
+## ✅ Yapılanlar (Play Mode'da Test Edildi)
+
+1. **Tüm araçlar tek olaya gidince kilitlenme düzeltildi.** Sebep: 3+ aracın birbirine döngüsel yol vermesi ve olay yerinde park eden araçların arkadan gelenlerin yolunu kesmesi. Çözüm (normal takip/fren akışı değişmedi):
+   - Olay yerine 45 m'den yakınken 1.2 sn takılan araç olduğu yerde sıraya girip çalışmaya başlar.
+   - 2.5 sn'den uzun duran araç 2.5 sn boyunca radarı yok sayar; NavMesh'in kendi çarpışma önleyicisiyle sıyrılır.
+   - *Test: 15 aracın tamamı (4 polis, 4 ambulans, 4 itfaiye, 3 helikopter) aynı olaya gönderildi → hepsi vardı, iş bitti, 47 sn'de 15/15 üsse döndü.*
+2. **Zorluk / tempo.** Araçlar %20 daha hızlı (hız çarpanı 0.6 → **0.72**, yani orijinalin %72'si; kara aracı seyir hızı ~18.7 m/s). Çağrılar ~%55 daha sık (**12–19 sn**, bekleyen olay başına +4 sn). Aynı anda en fazla **5** aktif olay. Olay yerindeki iş süreleri değişmedi (yangın 24 sn, çökme 30 sn).
+3. **Vardiya sayacı (sol üst).** `NIGHT SHIFT` paneli: kalan süre (**3:00**'ten geri sayar, son 30 sn kırmızı) ve oyun saati (**02:00 → 05:00 AM**). Kaza Dosyasındaki çağrı saati de bu saati kullanır. Süre bitince: çağrılar durur, açık dosya kapanır, oyun durur ve **vardiya sonu karnesi** açılır (Survivors / Rescued / Lost / Survival % ve not **S/A/B/C/F**). **PLAY AGAIN** sahneyi baştan başlatır. *Test: süre sonunda karne açıldı, çağrılar durdu, timeScale 0; PLAY AGAIN ile süre 3:00'e döndü.*
+4. **Ayarlar menüsü.** Mevcut `SettingsUI.cs` Yağız'ın `settings_panel_dark` tasarımıyla sahneye kuruldu: Sound / Music (10 bloklu çubuk, %10 adım), Language (< ENGLISH / TÜRKÇE >), Fullscreen (OFF / ON), DEFAULTS, BACK, X. Sol üstteki **dişli** veya **ESC** ile açılır; **açıkken oyun durur**. Kaza Dosyası açıkken ESC sadece dosyayı kapatır (ayarları açmaz). *Test: ses %30 → 3 blok ve AudioListener sesi değişti; dil TÜRKÇE oldu; OFF seçimi; DEFAULTS %70 / ENGLISH'e döndü; BACK kapattı ve oyun devam etti.*
+
+## 🧾 Dosyalar
+- **Yeni:** `Calls/ShiftClock.cs`, `UI/VolumeBlockBar.cs`
+- **Değişen:** `AStarMovementTester.cs` (takılma kurtarıcısı), `IncomingCallController.cs` (`StopCalls`), `IncidentBoard.cs` (saat ShiftClock'tan), `IncidentFileUI.cs` (ESC paylaşımı), `SettingsUI.cs` (açıkken oyunu durdurma + ESC paylaşımı; ses/dil/tam ekran mantığı değişmedi), `CallSystemSceneBuilder.cs`, `SampleScene.unity`, `README.md` (kontroller)
+
+## ⚠️ Bilinmesi Gerekenler
+- **Dil seçimi** kaydediliyor ama oyun metinleri henüz çevrilmiyor (tüm UI İngilizce). **Müzik** ayarı kaydediliyor ama projede müzik yok.
+- **Tam ekran** ayarı sadece build'de etkili (editörde görünür değişiklik olmaz).
+- Takılma kurtarıcısı devreye girdiğinde araçlar kısa süre birbirine çok yaklaşabilir (çarpışma önleyici NavMesh'e kalır).
+- Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, çağrı sesleri.

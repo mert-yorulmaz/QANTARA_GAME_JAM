@@ -144,6 +144,8 @@ namespace ZeroHour.Phase2.Calls
 
         public string GetClockTime()
         {
+            if (ShiftClock.Instance != null) return ShiftClock.Instance.GetClockTime();
+
             int totalMinutes = shiftStartHour * 60 + Mathf.FloorToInt(Time.timeSinceLevelLoad * gameMinutesPerSecond);
             return $"{(totalMinutes / 60) % 24:00}:{totalMinutes % 60:00}";
         }

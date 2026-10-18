@@ -19,6 +19,9 @@ namespace ZeroHour.Phase2.Calls
     {
         public static IncidentFileUI Instance { get; private set; }
 
+        /// <summary>ESC bu karede Kaza Dosyasını kapatmak için kullanıldıysa kare numarası.</summary>
+        public static int EscConsumedFrame { get; private set; } = -1;
+
         [Serializable]
         public class UnitRow
         {
@@ -216,6 +219,7 @@ namespace ZeroHour.Phase2.Calls
             Keyboard kb = Keyboard.current;
             if (kb != null && kb.escapeKey.wasPressedThisFrame)
             {
+                EscConsumedFrame = Time.frameCount; // Aynı ESC ayarlar menüsünü açmasın
                 Close();
                 return;
             }
