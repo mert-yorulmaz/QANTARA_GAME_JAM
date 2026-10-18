@@ -716,3 +716,21 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 ## ✅ Ayarlar panelinde ANA MENÜ düğmesi
 - Her iki fazda ESC ile açılan ortak ayarlar paneline **ANA MENÜ / MAIN MENU** düğmesi eklendi (VARSAYILAN ile GERİ arasında). Oyun ortasında ilerleme kaybolacağı için **iki adımlı**: ilk tık yazıyı "EMİN MİSİN? / SURE?" yapar, 3 sn içinde ikinci tık ana menüye döner; süre dolarsa düğme eski hâline döner. Ana menünün kendisinde düğme gizlenir.
 - *Test:* Faz 2'de panel açıldı, 1. tık → onay, 2. tık → MainMenu (oyun hızı 1, panel kapalı); ana menüde düğme gizli. Hata yok. Faz 2 sahnesinde şehir yerinde.
+
+---
+
+# 🔄 GÜNCELLEME 12 — 18 Ekim 2026 (Claude Code) — FAZ 1 REPOSUNA PUSH
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 12"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi.
+
+## ✅ Birleşik proje `github.com/mert-yorulmaz/GAME_JAM` → `main`'e gönderildi (kullanıcı onayıyla)
+- Commit **`2ac2774`** ("SIGN: Faz 1 + Faz 2 birlesik proje, ana menu"), `0e40baa` üstüne **normal ileri sarma** (force push yok, geçmiş korundu). Gönderilen içerik bu repodaki `claude/faz1-merge` (`3010e32`) ile **birebir aynı** (Assets / Packages / ProjectSettings dosya dosya karşılaştırıldı). Faz 1 reposunun kendi `.gitignore`, `.vsconfig`, kök klasördeki Yağız'ın PNG yüklemeleri değişmedi.
+- Yöntem: iki repo git ile birleştirilmedi; `claude/faz1-merge`'in commit'li hâli çıkarılıp Faz 1 klonuna uygulandı. Faz 1'in eski `Assets/SCRIPTS` klasörü git ile kaldırıldı (`Phase1_Scripts` olarak yeniden adlandırıldı, 55 dosya "rename" görünür; geçmiş korunur).
+- Yedekler: bu repoda `yedek-faz2-oncesi-merge` ve `yedek-faz1-faz2-birlesik` etiketleri + `claude/faz1-merge` branch'i GitHub'da; masaüstünde `Faz2_yedek_2026-10-18.zip`; Faz 1'in önceki hâli `0e40baa` commit'inde duruyor.
+
+## ⚠️ Faz 1 ekibi için notlar
+- `Assets/Scenes/SampleScene.unity` artık **Faz 2'nin şehri**. Faz 1'in ofis sahnesi **`Phase1_Office.unity`** oldu (içeriği aynı, sahne ve efekt profili yeni kimlikle). Oyun `MainMenu` sahnesinden başlar.
+- Faz 1 kodları `Assets/SCRIPTS` yerine **`Assets/Phase1_Scripts`** altında. Faz 1'e eklenen: kriz monitörü geçişi (`CrisisMonitorExit`), menü açıkken girdi beklemesi, 3 dosya.
+- Unity sürümü **6000.3.10f1** ile doğrulandı (Faz 1'in önceki sürümü 6000.3.26f1). Projeyi çekince ilk açılışta içe aktarma birkaç dakika sürer.
+- Bundan sonra Faz 1 değişiklikleri bu birleşik projede yapılmalı.
