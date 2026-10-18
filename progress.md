@@ -583,3 +583,36 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Kaza Dosyasındaki "ÇAĞRIYI KAPAT" / "SEVK ET" düğme yazıları da düğmeye sığana kadar küçülüyor (Türkçe'de kenara değiyordu).
 - Takip ihbarının başlığı "Yağma ihbarı (doğrulanmamış)" → **"Yağma ihbarı"** (İng. "Looting report"): Türkçe'de damganın altına giriyordu; "doğrulanmamış" bilgisini zaten TEYİTSİZ damgası veriyor.
 - *Test:* Takip ihbarı dosyası İngilizce ve Türkçe açılıp görüntülendi; damga, başlık ve düğmeler çakışmıyor. Konsolda hata yok.
+
+---
+---
+
+# 🔄 GÜNCELLEME 10 — 18 Ekim 2026 (Claude Code) — FAZ 1 + FAZ 2 BİRLEŞTİ
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 10"DUR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. Yeni branch: `claude/faz1-merge` (`claude/faz2-ui`'den açıldı). `main`'e birleştirilmedi, push edilmedi.
+> Birleştirme öncesi yedek: GitHub'da `yedek-faz2-oncesi-merge` etiketi + masaüstünde `Faz2_yedek_2026-10-18.zip`.
+
+## Kaynak
+- Faz 1: `github.com/mert-yorulmaz/GAME_JAM`, commit `db472d2` ("Add BIA OS inspection desk, shift loop, tasks, money and SFX"). Masaüstünde ayrı klasöre çekildi (`Faz1_GAME_JAM`), oradan kopyalandı; iki repo git ile birleştirilmedi.
+- Unity sürümü: Faz 1 6000.3.26f1 ile yapılmış, birleşik proje **6000.3.10f1**'de kaldı (kullanıcı kararı). Faz 1 bu sürümde derlendi ve çalıştı.
+
+## ✅ Yapılanlar
+- Faz 1 klasörleri `.meta` dosyalarıyla kopyalandı: `Brick Project Studio`, `Dispatch` (Faz 1 UI; editör scriptleri bu yolu bekliyor), `OUR_PREFABS`, `Office Pack`, `PHOTOS`, `Picture_Frames_FREE`, `SOUNDS`, `TEXTURES`.
+- `SCRIPTS` → **`Phase1_Scripts`**: Windows büyük/küçük harf ayırmadığı için bizim `Scripts` klasörüyle aynı yere düşüyordu.
+- Unity şablon dosyaları (`Settings`, `TextMesh Pro`, `TutorialInfo`, `Readme`, `InputSystem_Actions`) kopyalanmadı: iki projede aynı kimlikle duruyorlar, bizimkiler kaldı.
+- Faz 1 sahnesi **`Assets/Scenes/Phase1_Office.unity`** (yeni kimlik). Orijinali bizimkiyle aynı yol ve kimlikteydi (`SampleScene`).
+- Görüntü efekti profili: iki sahne aynı profili farklı ayarlarla kullanıyordu → Faz 1'e ayrı kopya **`Settings/Phase1_OfficeProfile.asset`**. Faz 2'nin gece görünümü değişmedi.
+- `ChairTrigger` etiketi eklendi. Build sırası: **Phase1_Office → SampleScene**.
+- **Geçiş:** `DoorExit` (Faz 1): mesai bitip kapıdan çıkınca ekran kararır, 1 sn sonra gece vardiyası sahnesi yüklenir (`nextSceneName`, `holdBeforeLoad` alanları). Faz 2 açılınca fare imleci serbest bırakılır (Faz 1 kilitliyordu).
+
+## 🧪 Test
+- Derleme 0 hata. Faz 1 sahnesinde kayıp script yok.
+- Faz 1 Play: ofis, görev listesi, bakiye UI çalışıyor, hata yok.
+- Kapıdan çıkış tetiklendi → ekran karardı → ~3 sn'de Faz 2 yüklendi, imleç serbest, olay sistemi çalışıyor, hata yok.
+
+## ⚠️ Bilinmesi Gerekenler
+- Faz 1'in kendi `OUR_PREFABS/Office.prefab`'ında 3 ofis lambasının 2. materyali boş (Faz 1 reposunda da öyle) — Faz 1 ekibine iletilmeli.
+- İki fazda da `ShiftClock` adında sınıf var; bizimki `ZeroHour.Phase2.Calls` isim alanında olduğu için derleme sorunu yok.
+- Faz 1'in gerçek oynanışı (masaya oturma, bilgisayar, dosya denetimi, mesai sonu zili) elle test edilmeli; ben kapı çıkışını doğrudan tetikledim.
+- Faz 1 ekibi bundan sonra bu birleşik projede çalışmalı; kendi repolarında değişiklik yaparlarsa farkı elle taşımak gerekir.
