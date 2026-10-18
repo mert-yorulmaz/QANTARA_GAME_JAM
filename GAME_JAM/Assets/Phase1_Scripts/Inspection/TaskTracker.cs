@@ -58,8 +58,8 @@ public class TaskTracker : MonoBehaviour
         Add("Go to the computer chair and press E", clock.HasStarted);
         Add("Open the Case Files folder", caseOpened || over);
         Add("Open the Rule Book folder to check the rules", ruleBookOpened || over);
-        Add($"Review every case file ({reviewed}/{total})", reviewed >= total || over);
-        Add("Wait for the bell at 17:00", over);
+        // Mesai saat 17:00'yi beklemez: son dosya incelenince biter
+        Add(ZeroHour.Phase2.Calls.Loc.F("Review every case file ({0}/{1})", reviewed, total), reviewed >= total || over);
         if (shop != null)
             Add(atComputer ? "Buy your night crew in the NIGHT CREW window" : "Sit at the computer and buy your night crew", shop.Confirmed);
         if (monitor != null)
@@ -100,9 +100,10 @@ public class TaskTracker : MonoBehaviour
         desktopView.SetBalance(desk.Money);
     }
 
+    // Metin İngilizce anahtar; seçili dilde gösterilir (ayarlardan dil değişince anında güncellenir)
     void Add(string text, bool done)
     {
-        entries.Add(new Entry { text = text, done = done });
+        entries.Add(new Entry { text = ZeroHour.Phase2.Calls.Loc.T(text), done = done });
     }
 
     void OnMoneyChanged(int delta)

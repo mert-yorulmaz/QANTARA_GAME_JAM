@@ -25,6 +25,10 @@ public class Win7Window : MonoBehaviour
         minimizeButton.onClick.AddListener(Minimize);
         closeButton.onClick.AddListener(Close);
 
+        // Pencere içeriği (ör. Case Files'taki dosya paneli) düğmelerin üstüne binip tıklamayı yutmasın
+        minimizeButton.transform.SetAsLastSibling();
+        closeButton.transform.SetAsLastSibling();
+
         // Sağ alt köşeden boyutlandırma (sahneyi yeniden kurmadan her pencereye eklenir)
         var drag = GetComponent<WindowDragHandle>();
         if (drag != null && GetComponentInChildren<WindowResizeHandle>(true) == null)

@@ -108,17 +108,17 @@ public class CrisisMonitorExit : MonoBehaviour
 
         if (poweredOn && shop != null && !shop.Confirmed)
         {
-            ShowPrompt("Buy your night crew on the computer first");
+            ShowPrompt(ZeroHour.Phase2.Calls.Loc.T("Buy your night crew on the computer first"));
         }
         else if (poweredOn)
         {
-            ShowPrompt("[E] Start the night shift");
+            ShowPrompt(ZeroHour.Phase2.Calls.Loc.T("[E] Start the night shift"));
             if (Keyboard.current.eKey.wasPressedThisFrame)
                 StartCoroutine(Enter());
         }
         else
         {
-            ShowPrompt($"Crisis desk opens at {(clock != null ? clock.endHour : 17):00}:00");
+            ShowPrompt(ZeroHour.Phase2.Calls.Loc.T("Crisis desk opens when your files are done"));
         }
     }
 

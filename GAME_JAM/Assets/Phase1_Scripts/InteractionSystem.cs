@@ -10,6 +10,9 @@ public class InteractionSystem : MonoBehaviour
     private bool insideChairTrigger = false;
     private bool promptSuppressed = false;
 
+    // Sandalyenin etkilesim alanindayken E ile oturulabilir (sandalyeye tam bakmak gerekmez)
+    public bool InChairZone => insideChairTrigger;
+
     void Start()
     {
         if (interactionPanel != null)
@@ -54,7 +57,7 @@ public class InteractionSystem : MonoBehaviour
             return;
 
         if (interactionText != null)
-            interactionText.text = "[E] Sit Down";
+            interactionText.text = ZeroHour.Phase2.Calls.Loc.T("[E] Sit Down");
 
         if (interactionPanel != null)
             interactionPanel.SetActive(true);

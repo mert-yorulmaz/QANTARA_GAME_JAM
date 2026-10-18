@@ -8,6 +8,12 @@ public class ShiftClock : MonoBehaviour
     public int startHour = 8;
     public int endHour = 17;
     public float realSecondsPerShift = 120f;
+    [Tooltip("Saat yalnızca bu obje açıkken (oyuncu bilgisayar başındayken) ilerler; masadan kalkınca zaman durur.")]
+    public GameObject runOnlyWhileActive;
+    [Tooltip("Açıksa mesai 17:00'de kendiliğinden biter. Kapalıysa mesai son dosya incelenince biter (EndShift).")]
+    public bool endsAtEndHour = false;
+    [Tooltip("Mesai saatle bitmiyorsa saat bu kadar dakika kala durur (dosyalar bitmeden 17:00 görünmesin).")]
+    public float holdMinutesBeforeEnd = 15f;
     [Tooltip("dd MMM yyyy, örn. 10 Mar 2026")]
     public string date = "10 Mar 2026";
 
@@ -87,10 +93,31 @@ public class ShiftClock : MonoBehaviour
         if (!HasStarted || IsOver)
             return;
 
-        elapsed += Time.deltaTime;
-        if (elapsed < realSecondsPerShift)
+        // Masadan kalkınca zaman geçmez
+        if (runOnlyWhileActive != null && !runOnlyWhileActive.activeInHierarchy)
             return;
 
+        elapsed += Time.deltaTime;
+
+        if (!endsAtEndHour)
+        {
+            // Mesai dosyalar bitince biter; saat 17:00'ye varmadan bekler
+            float hold = realSecondsPerShift * Mathf.Clamp01(1f - holdMinutesBeforeEnd / Mathf.Max(1f, ShiftMinutes));
+            elapsed = Mathf.Min(elapsed, hold);
+            return;
+        }
+
+        if (elapsed >= realSecondsPerShift)
+            EndShift();
+    }
+
+    // Mesaiyi bitirir: saat 17:00 olur, zil çalar (son dosya incelenince InspectionDesk çağırır)
+    public void EndShift()
+    {
+        if (!HasStarted || IsOver)
+            return;
+
+        elapsed = realSecondsPerShift;
         IsOver = true;
         RingBell();
         ShiftEnded?.Invoke();

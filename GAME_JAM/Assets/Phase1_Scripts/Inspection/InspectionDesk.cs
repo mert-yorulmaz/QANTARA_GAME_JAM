@@ -472,9 +472,9 @@ public class InspectionDesk : MonoBehaviour
             return;
         }
 
+        // Mesai saat 17:00'yi beklemez: son dosya incelenince biter (zil, özet, ekip satın alma)
         allReviewed = true;
-        ShowSummary("ALL FILES REVIEWED", "Wait for the bell at 17:00, then head to your night shift.");
-        desktop.Notify("All files reviewed", "No more files today. Wait for the bell at 17:00.");
+        clock.EndShift();
     }
 
     void EndShift()

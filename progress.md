@@ -762,3 +762,27 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Faz 1 metinleri (satın alma dahil) İngilizce; Faz 1'de çeviri sistemi yok.
 
 > **Güncelleme 13 — gönderim:** Aynı içerik `github.com/mert-yorulmaz/GAME_JAM` `main`'e **`74e4ffb`** olarak gönderildi (`2ac2774` üstüne normal ileri sarma, force yok; gönderilen dosyalar bu repodaki `c557fa2` ile birebir aynı).
+
+---
+
+# 🔄 GÜNCELLEME 14 — 18 Ekim 2026 (Claude Code) — FAZ 1 HATA DÜZELTMELERİ + MESAİ DOSYALAR BİTİNCE BİTER
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 14"TÜR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi.
+
+## ✅ Kullanıcının bildirdiği hatalar
+1. **Görev kutusu hep İngilizceydi** → görevler ve "GÖREVLER / BAKİYE" başlıkları seçili dilde (ayarlardan değişince anında). Türkçe'de başlık bakiye yazısına binmesin diye alanı daraltıldı.
+2. **"[E] Sit Down" dile göre değişmiyordu / sadece sandalyeye tam bakınca oturuluyordu** → "[E] Otur"; yazı görünürken (sandalye alanında) ya da sandalyeye / masaya / monitöre / kasaya / klavyeye bakarken E ile oturulur.
+3. **Masanın içine giriliyordu** → masanın üstüne tırmanılabiliyordu; masaya görünmez, 2,6 m yüksek engel (`BPS_Table/DeskBlocker`) eklendi. Test: her yönden yürüyerek masaya / sandalyeye çıkılamıyor.
+4. **Masadan kalkınca zaman geçiyordu** → mesai saati yalnızca bilgisayar başındayken ilerler (`ShiftClock.runOnlyWhileActive`). Test: oturunca 08:05→08:23, kalkınca 08:23'te kaldı.
+5. **Masada ESC** → artık bilgisayardan kaldırmaz; oyun durur ve ayarlar açılır. Masadan **sadece E** ile kalkılır.
+6. **PC'nin arkasındaki duvardan geçiliyordu** → kaynağı masaya tırmanmaktı (masanın üstünden duvarın dışına çıkılıyordu); 3. maddedeki engel bunu da kapatıyor. Duvarların çarpışma kutuları sağlam (yerden duvarlara yürüme testi).
+7. **Agency Memos yazısı klasörden taşıyordu** → metin yeni akışa göre kısaltıldı ve kutuya sığana kadar küçülüyor.
+8. **Case Files penceresi küçülmüyor / kapanmıyordu** → dosya paneli (`InspectionFile`) _ ve X düğmelerinin üstüne binip tıklamayı yutuyordu; düğmeler her pencerede en üste alındı. Test: küçültme ve kapatma çalışıyor.
+
+## ✅ Mesai saat 17:00'yi beklemiyor
+- Son dosya incelenince mesai biter: saat 17:00'a atlar, zil çalar, mesai özeti ve NIGHT CREW penceresi açılır. Dosyalar bitmeden saat 16:45'i geçmez (`ShiftClock.endsAtEndHour = false`). "17:00 zilini bekle" görevi kaldırıldı; memo ve monitör yazısı ("Kriz masası dosyaların bitince açılır") güncellendi.
+
+## 🧪 Test (Play, Türkçe)
+- Tırmanma, oturma alanı + "[E] Otur", saat duraklaması, Case Files düğmeleri, memo, iki görev kutusu ekran görüntüsü, 3. dosyada 08:29 → 17:00 + NIGHT CREW açıldı. Hata yok.
+- Elle denenmeli: gerçek E / ESC tuşları (masada ESC → ayarlar, E → kalk), masaya bakıp E ile oturma.

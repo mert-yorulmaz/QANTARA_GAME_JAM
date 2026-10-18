@@ -163,6 +163,23 @@ namespace ZeroHour.Phase2.Calls
             { "MAIN MENU", "ANA MENÜ" },
             { "SURE?", "EMİN MİSİN?" },
 
+            // Faz 1 (ofis): görev kutusu ve etkileşim yazıları
+            { "TASKS", "GÖREVLER" },
+            { "BALANCE", "BAKİYE" },
+            { "Get up from the sofa", "Kanepeden kalk" },
+            { "Go to the computer chair and press E", "Bilgisayar sandalyesine git ve E'ye bas" },
+            { "Open the Case Files folder", "Case Files (Dosyalar) klasörünü aç" },
+            { "Open the Rule Book folder to check the rules", "Kuralları görmek için Rule Book (Kural Kitabı) klasörünü aç" },
+            { "Review every case file ({0}/{1})", "Bütün dosyaları incele ({0}/{1})" },
+            { "Buy your night crew in the NIGHT CREW window", "NIGHT CREW penceresinden gece ekibini satın al" },
+            { "Sit at the computer and buy your night crew", "Bilgisayara otur ve gece ekibini satın al" },
+            { "Press E to stand up, then go to the crisis monitor on the wall", "E ile kalk, duvardaki kriz monitörüne git" },
+            { "Look at the crisis monitor on the wall and press E", "Duvardaki kriz monitörüne bak ve E'ye bas" },
+            { "[E] Sit Down", "[E] Otur" },
+            { "[E] Start the night shift", "[E] Gece vardiyasını başlat" },
+            { "Buy your night crew on the computer first", "Önce bilgisayardan gece ekibini satın al" },
+            { "Crisis desk opens when your files are done", "Kriz masası dosyaların bitince açılır" },
+
             // Ana menü (oyunun adı SIGN çevrilmez)
             { "DISASTER CONTROL LINE", "AFET KONTROL HATTI" },
             { "LIVE", "CANLI" },

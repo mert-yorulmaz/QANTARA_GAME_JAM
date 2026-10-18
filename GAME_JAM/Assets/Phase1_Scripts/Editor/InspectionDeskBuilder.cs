@@ -389,21 +389,30 @@ public static class InspectionDeskBuilder
         desk.reportText = UIFactory.Text("Report", client, medium, 16f, UIFactory.Ink, "", 0f, 4f, 380f, 266f, TextAlignmentOptions.TopLeft);
     }
 
+    // Sabah notu gövdesi (mesai dosyalar bitince biter; sonra gece ekibi ve kriz monitörü)
+    public const string MemoBody =
+        "Welcome back, inspector. Review every file in the Case Files folder. Your shift ends when the last file is done.\n\n" +
+        "• Approve a file only if it breaks no rule.\n" +
+        "• To reject a file, cite every rule it breaks.\n" +
+        "• Use X-RAY SCAN on every file. Damage is not always declared.\n" +
+        "• The Rule Book folder holds the full regulations (press R).\n" +
+        "• Check every field and the X-RAY before you decide.\n\n" +
+        "When your files are done, buy your night crew on this computer, then go to the crisis monitor on the wall.\n\n" +
+        "— BIA Management";
+
     static void BuildMemo(Transform client)
     {
         const string memo =
             "<b>FROM:</b> Central Building Inspection Agency\n" +
             "<b>TO:</b> Inspector, Desk 4\n" +
             "<b>SUBJECT:</b> Your shift\n\n" +
-            "Welcome back, inspector. Your shift runs from 08:00 to 17:00. Review every file in the Case Files folder before the bell rings.\n\n" +
-            "• Approve a file only if it breaks no rule.\n" +
-            "• To reject a file, cite every rule it breaks.\n" +
-            "• Use X-RAY SCAN on every file. Damage is not always declared.\n" +
-            "• The Rule Book folder holds the full regulations (press R).\n\n" +
-            "• Click every field on a file to check it against its rule. You can only approve or reject once every field and the X-RAY are checked.\n\n" +
-            "When the bell rings, leave your desk and go to the crisis monitor on the wall. Your night shift starts right after.\n\n" +
-            "— BIA Management";
-        UIFactory.Text("Memo", client, medium, 15f, UIFactory.Ink, memo, 0f, 4f, 500f, 326f, TextAlignmentOptions.TopLeft, true);
+            MemoBody;
+        var text = UIFactory.Text("Memo", client, medium, 15f, UIFactory.Ink, memo, 0f, 4f, 500f, 326f, TextAlignmentOptions.TopLeft, true);
+        // Uzun metin klasörden taşmasın: kutuya sığana kadar küçülür
+        text.enableAutoSizing = true;
+        text.fontSizeMax = 15f;
+        text.fontSizeMin = 11f;
+        text.overflowMode = TextOverflowModes.Truncate;
     }
 
     static void BuildFile(Transform client, InspectionDesk desk)

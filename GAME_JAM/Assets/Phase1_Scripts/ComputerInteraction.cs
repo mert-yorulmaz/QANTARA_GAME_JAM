@@ -12,6 +12,8 @@ public class ComputerInteraction : MonoBehaviour
     public InteractionSystem interactionSystem;
     public FPSCamera fpsCamera;
     public Transform computerViewPoint;
+    [Tooltip("Bakinca da oturulabilen masa parcalari (masa, monitor, kasa, klavye).")]
+    public Collider[] deskColliders;
 
     [Header("Settings")]
     public float interactionDistance = 5f;
@@ -50,12 +52,9 @@ public class ComputerInteraction : MonoBehaviour
 
         if (usingComputer)
         {
-            if (Keyboard.current.eKey.wasPressedThisFrame ||
-                Keyboard.current.escapeKey.wasPressedThisFrame)
+            // Masadan sadece E ile kalkilir; ESC ayarlari acar ve oyunu durdurur
+            if (Keyboard.current.eKey.wasPressedThisFrame)
             {
-                // Bilgisayar basinda ESC once bilgisayardan kaldirir; ayarlar bu tusla acilmaz
-                if (Keyboard.current.escapeKey.wasPressedThisFrame)
-                    ZeroHour.Shared.GamePause.ConsumeEscape();
                 ExitComputer();
             }
 
@@ -66,17 +65,23 @@ public class ComputerInteraction : MonoBehaviour
             new Vector3(0.5f, 0.5f, 0f)
         );
 
-        if (Physics.Raycast(
-            ray,
-            out RaycastHit hit,
-            interactionDistance))
+        if (!Keyboard.current.eKey.wasPressedThisFrame)
+            return;
+
+        // Oturma: sandalye alanindayken ya da sandalyeye / masaya / bilgisayara bakarken E
+        bool inZone = interactionSystem != null && interactionSystem.InChairZone;
+        bool lookingAtDesk = false;
+        if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
         {
-            if (hit.collider == chairCollider &&
-                Keyboard.current.eKey.wasPressedThisFrame)
-            {
-                EnterComputer();
-            }
+            lookingAtDesk = hit.collider == chairCollider;
+            if (deskColliders != null)
+                foreach (var c in deskColliders)
+                    if (c != null && hit.collider == c)
+                        lookingAtDesk = true;
         }
+
+        if (inZone || lookingAtDesk)
+            EnterComputer();
     }
 
     void EnterComputer()
