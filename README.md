@@ -102,12 +102,3 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 | **Helikopter [+] → rol bölmesi** | Her helikopter için ambulans / polis / itfaiye logosundan birini seçme (joker birim o işi yapar) |
 | **Sol üstteki dişli veya ESC** | Ayarlar (ses, müzik, dil, tam ekran); açıkken oyun durur |
 | **Sol üst sayaç** | Vardiyanın kalan süresi (3:00) ve oyun saati (02:00 → 05:00). Bitince vardiya sonu karnesi açılır, PLAY AGAIN ile yeniden başlanır |
-
----
-
-## 🏆 6. Jüri Değerlendirme Uyumu (100 Puan Özeti)
-* **Oynanabilirlik (25/25):** Anlaşılır filo göstergeleri, net tıklama mekanikleri ve gerçek zamanlı acil çağrı geri sayımları.
-* **Temayla İlişki (25/25):** İnşaat mühendisliği yapı güvenliği, gaz emniyet vanaları ve eşya sabitleme farkındalığının doğrudan gece afetin büyüklüğünü belirlemesi.
-* **Yaratıcılık (20/20):** İki farklı oyun türünün (Masa başı evrak denetimi + Şehir acil durum dispatch) anlamlı bir neden-sonuç köprüsüyle birbirine bağlanması.
-* **Görsel/İşitsel (15/15):** Neon siber-hologram taktiksel acil durum kriz masası estetiği, yanıp sönen sirenler ve deprem titreşimleri.
-* **Teknik Bütünlük (15/15):** Modüler, event-driven C# mimarisi, sıfır derleme hatası ve yüksek performans.
