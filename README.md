@@ -14,6 +14,13 @@ Deniz'in masasında duran çerçeveli aile fotoğrafı, alınan her bürokratik 
 
 ---
 
+<video width="100%" controls>
+  <source src="./GameImages/video.mp4" type="video/mp4">
+  Tarayıcınız video etiketini desteklemiyor.
+</video>
+
+---
+
 ## 🎮 Kontroller
 
 ### 🔹 Faz 1 – Ofis ve Denetim Masası
