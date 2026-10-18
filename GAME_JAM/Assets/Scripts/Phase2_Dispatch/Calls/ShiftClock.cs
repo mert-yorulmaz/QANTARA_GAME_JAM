@@ -44,6 +44,10 @@ namespace ZeroHour.Phase2.Calls
         {
             Instance = this;
             if (debriefRoot != null) debriefRoot.SetActive(false);
+
+            // Faz 1 (birinci şahıs ofis) imleci kilitleyip gizler; gece vardiyası fareyle oynanır
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
             if (playAgainButton != null) playAgainButton.onClick.AddListener(PlayAgain);
         }
 
