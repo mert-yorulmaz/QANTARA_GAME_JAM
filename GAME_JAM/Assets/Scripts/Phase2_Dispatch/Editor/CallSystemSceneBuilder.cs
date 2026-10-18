@@ -27,6 +27,8 @@ namespace ZeroHour.Phase2.Editor
         private const string FontDir = "Assets/UI/Dispatch_UI_Assets/06_fonts/";
         private const string PrefabDir = "Assets/Prefabs/Calls";
         private const string CanvasName = "[ZeroHour_Dispatch_Canvas]";
+        private const string NightMusicName = "[ZeroHour_NightMusic]";
+        private const string NightMusicPath = "Assets/SOUNDS/phase 2 background.mp3";
         private const string CommandSystemName = "[ZeroHour_CommandSystem]";
 
         // UI PNG'leri 1280x720 tasarımın 2 katı (2560x1440) dışa aktarıldı; 1920x1080 Canvas'ta 0.75 ölçek doğal boydur
@@ -115,6 +117,21 @@ namespace ZeroHour.Phase2.Editor
             callAudio.playOnAwake = false;
             callAudio.spatialBlend = 0f;
             IncomingCallController calls = GetOrAdd<IncomingCallController>(systemObj);
+
+            // Gece vardiyası müziği: döngüde, ayarlardaki müzik seviyesiyle (MusicVolume)
+            GameObject musicObj = FindRoot(NightMusicName);
+            if (musicObj == null)
+            {
+                musicObj = new GameObject(NightMusicName);
+                Undo.RegisterCreatedObjectUndo(musicObj, "Create Night Music");
+            }
+            AudioSource music = GetOrAdd<AudioSource>(musicObj);
+            music.clip = AssetDatabase.LoadAssetAtPath<AudioClip>(NightMusicPath);
+            music.loop = true;
+            music.playOnAwake = true;
+            music.spatialBlend = 0f;
+            music.volume = 1f;
+            GetOrAdd<ZeroHour.Shared.MusicVolume>(musicObj);
 
             // Zorluk: çağrılar ~%55 daha sık (20–30 sn → 12–19 sn), bekleyen her olay için +4 sn
             SerializedObject callTimingSo = new SerializedObject(calls);

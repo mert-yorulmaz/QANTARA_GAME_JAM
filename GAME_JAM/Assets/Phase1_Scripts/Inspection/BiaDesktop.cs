@@ -64,6 +64,21 @@ public class BiaDesktop : MonoBehaviour
         notification.gameObject.SetActive(false);
     }
 
+    // Oyun sırasında masaüstüne yeni pencere ekler (ör. mesai sonu ekip satın alma penceresi), görev çubuğu düğmesiyle birlikte.
+    public void AddWindow(Win7Window window, TaskbarButton taskButton)
+    {
+        int index = windows.Length;
+        System.Array.Resize(ref windows, index + 1);
+        System.Array.Resize(ref taskButtons, index + 1);
+        windows[index] = window;
+        taskButtons[index] = taskButton;
+
+        window.Init(this);
+        taskButton.button.onClick.AddListener(() => TaskbarClicked(window));
+        taskButton.gameObject.SetActive(false);
+        window.Opened += () => taskButton.transform.SetAsLastSibling();
+    }
+
     void OnEnable()
     {
         // Masa kapalıyken gelen son bildirim oturunca gösterilir.

@@ -8226,6 +8226,7 @@ MonoBehaviour:
   ruleBookWindow: {fileID: 1822995085}
   door: {fileID: 2144421707}
   monitor: {fileID: 1722758235104018678}
+  shop: {fileID: 1488967726}
   computerScreen: {fileID: 708324792}
   hudView: {fileID: 126696236}
   desktopView: {fileID: 1917129609}
@@ -20604,6 +20605,7 @@ GameObject:
   - component: {fileID: 1488967723}
   - component: {fileID: 1488967724}
   - component: {fileID: 1488967725}
+  - component: {fileID: 1488967726}
   m_Layer: 5
   m_Name: BIA_OS
   m_TagString: Untagged
@@ -20848,6 +20850,46 @@ MonoBehaviour:
   rejectedRules: {fileID: 872069231}
   rejectionSlip: {fileID: 707297850}
   ruleBook: {fileID: 1725368917}
+--- !u!114 &1488967726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1488967722}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da863fd4ece059a4c8f174f45d906d45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FleetShop
+  desk: {fileID: 1488967725}
+  desktop: {fileID: 1488967724}
+  clock: {fileID: 696066809}
+  template: {fileID: 1012642294}
+  police:
+    name: Police
+    icon: {fileID: 21300000, guid: db43f26561021f84d97cd1f231a167c2, type: 3}
+    price: 100
+    baseCount: 1
+    maxCount: 3
+  ambulance:
+    name: Ambulance
+    icon: {fileID: 21300000, guid: 41b8d8a15e87e124baac26b905449e85, type: 3}
+    price: 100
+    baseCount: 1
+    maxCount: 3
+  fireTruck:
+    name: Fire Truck
+    icon: {fileID: 21300000, guid: 4034717055f40044ebdcf80bacf30f41, type: 3}
+    price: 150
+    baseCount: 1
+    maxCount: 3
+  helicopter:
+    name: Helicopter
+    icon: {fileID: 21300000, guid: 3f3799d251a1cec49a0f9ecf0e45faaf, type: 3}
+    price: 200
+    baseCount: 1
+    maxCount: 2
 --- !u!1 &1491003875
 GameObject:
   m_ObjectHideFlags: 0
@@ -23523,20 +23565,22 @@ MonoBehaviour:
     rules:
     - badge: A
       title: Review
-      body: Compare what the owner declared with the rules in this handbook. The
-        owner's notes never override a rule.
+      body: Compare what the owner declared with the rules in this handbook. <b><color=#A8241C>The
+        owner's notes never override a rule.</color></b>
       structural: 0
       rejectTag: 0
     - badge: B
       title: Scan
-      body: Press X-RAY SCAN to see the floor plan. Red marks show structural damage.
-        Yellow FE marks show fire extinguishers.
+      body: Press <b><color=#1E3A5F>X-RAY SCAN</color></b> to see the floor plan.
+        <b><color=#A8241C>Red marks</color></b> show structural damage. <b><color=#1E3A5F>Yellow
+        FE marks</color></b> show fire extinguishers.
       structural: 0
       rejectTag: 0
     - badge: C
       title: Decide
-      body: Approve only if the file breaks no rule. To reject, mark every rule the
-        file breaks on the rejection slip.
+      body: Approve <b>only</b> if the file breaks <b>no rule</b>. To reject, mark
+        <b><color=#A8241C>every rule</color></b> the file breaks on the rejection
+        slip.
       structural: 0
       rejectTag: 0
   - chapter: CHAPTER 1
@@ -23544,14 +23588,15 @@ MonoBehaviour:
     rules:
     - badge: 1.1
       title: Report Date
-      body: Inspection files filed before 01 Sep 2025 are outdated. An outdated report
-        cannot be approved.
+      body: Inspection files filed <b><color=#A8241C>before 01 Sep 2025</color></b>
+        are outdated. An outdated report <b>cannot be approved</b>.
       structural: 0
       rejectTag: 1
     - badge: 1.2
       title: Seal and Signature
-      body: Every file must be signed by the owner and carry the official agency
-        seal. If either one is missing, the file is invalid.
+      body: Every file must be <b><color=#1E3A5F>signed by the owner</color></b>
+        and carry the <b><color=#1E3A5F>official agency seal</color></b>. If either
+        one is missing, the file is <b><color=#A8241C>invalid</color></b>.
       structural: 0
       rejectTag: 1
   - chapter: CHAPTER 2
@@ -23559,16 +23604,17 @@ MonoBehaviour:
     rules:
     - badge: 2.1
       title: Load-Bearing System
-      body: If the report mentions physical damage to columns or beams, such as cuts,
-        large cracks, thinning or deterioration, the building is marked for demolition
-        regardless of its age.
+      body: If the report mentions <b><color=#A8241C>physical damage to columns or
+        beams</color></b>, such as cuts, large cracks, thinning or deterioration,
+        the building is <b><color=#A8241C>marked for demolition</color></b> regardless
+        of its age.
       structural: 1
       rejectTag: 1
     - badge: 2.2
       title: Commercial Ground Floors
-      body: Buildings with a business on the ground floor (shop, market, car dealer,
-        warehouse) must include a Load-Bearing Wall Supplement. If it is missing,
-        the file cannot be approved.
+      body: Buildings with a <b>business on the ground floor</b> (shop, market, car
+        dealer, warehouse) must include a <b><color=#1E3A5F>Load-Bearing Wall Supplement</color></b>.
+        If it is missing, the file <b><color=#A8241C>cannot be approved</color></b>.
       structural: 1
       rejectTag: 1
   - chapter: CHAPTER 3
@@ -23576,20 +23622,21 @@ MonoBehaviour:
     rules:
     - badge: 3.1
       title: Fire Extinguisher
-      body: The X-RAY floor plan must show at least one fire extinguisher (yellow
-        FE mark).
+      body: The X-RAY floor plan must show <b><color=#1E3A5F>at least one fire extinguisher</color></b>
+        (yellow FE mark).
       structural: 0
       rejectTag: 1
     - badge: 3.2
       title: Emergency Exits
-      body: All emergency exits must be open and accessible. Locked or blocked exits
-        are grounds for rejection.
+      body: All emergency exits must be <b><color=#1E3A5F>open and accessible</color></b>.
+        <b><color=#A8241C>Locked or blocked exits</color></b> are grounds for rejection.
       structural: 0
       rejectTag: 1
     - badge: 3.3
       title: Emergency Bag
-      body: The emergency bag must contain water, a flashlight, a first aid kit and
-        a whistle. If any item is missing, the bag is incomplete.
+      body: The emergency bag must contain <b><color=#1E3A5F>water, a flashlight,
+        a first aid kit and a whistle</color></b>. If <b><color=#A8241C>any item
+        is missing</color></b>, the bag is incomplete.
       structural: 0
       rejectTag: 1
   - chapter: CHAPTER 4
@@ -23597,8 +23644,9 @@ MonoBehaviour:
     rules:
     - badge: 4.1
       title: Bribery
-      body: Money, gifts or envelopes attached to a file are bribes. Reject the file
-        and cite this rule. Letters from architects or engineers are not bribes.
+      body: <b><color=#A8241C>Money, gifts or envelopes</color></b> attached to a
+        file are bribes. Reject the file and cite this rule. <b><color=#1E3A5F>Letters
+        from architects or engineers are not bribes.</color></b>
       structural: 0
       rejectTag: 1
   window: {fileID: 1822995085}
@@ -30691,6 +30739,7 @@ MonoBehaviour:
   - {fileID: 1822070579}
   - {fileID: 330585548}
   - {fileID: 691585088}
+  shop: {fileID: 1488967726}
   hideOnEnter:
   - {fileID: 126696235}
   interactionDistance: 5

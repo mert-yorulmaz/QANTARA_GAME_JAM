@@ -19,6 +19,8 @@ public class TaskTracker : MonoBehaviour
     public DoorExit door;
     [Tooltip("Gece vardiyasına geçiş: duvardaki kriz monitörü (atanmışsa kapının yerine geçer).")]
     public CrisisMonitorExit monitor;
+    [Tooltip("Mesai sonu ekip satın alma (atanmışsa monitörden önce görev olur).")]
+    public FleetShop shop;
     [Tooltip("Oturunca açılan bilgisayar ekranı (ComputerPanel).")]
     public GameObject computerScreen;
 
@@ -58,6 +60,8 @@ public class TaskTracker : MonoBehaviour
         Add("Open the Rule Book folder to check the rules", ruleBookOpened || over);
         Add($"Review every case file ({reviewed}/{total})", reviewed >= total || over);
         Add("Wait for the bell at 17:00", over);
+        if (shop != null)
+            Add(atComputer ? "Buy your night crew in the NIGHT CREW window" : "Sit at the computer and buy your night crew", shop.Confirmed);
         if (monitor != null)
             Add(atComputer ? "Press E to stand up, then go to the crisis monitor on the wall" : "Look at the crisis monitor on the wall and press E",
                 monitor.HasLeft);
@@ -83,6 +87,12 @@ public class TaskTracker : MonoBehaviour
         if (visible >= 0)
             entries.RemoveRange(visible + 1, entries.Count - visible - 1);
 
+        // Kutu taşmasın: tamamlananlardan yalnızca son birkaçı görünür
+        const int MaxDone = 3;
+        int doneShown = visible >= 0 ? visible : entries.Count;
+        if (doneShown > MaxDone)
+            entries.RemoveRange(0, doneShown - MaxDone);
+
         hudView.gameObject.SetActive(!atComputer);
         hudView.Render(entries);
         hudView.SetBalance(desk.Money);
@@ -97,7 +107,8 @@ public class TaskTracker : MonoBehaviour
 
     void OnMoneyChanged(int delta)
     {
-        hudView.ShowDelta(delta);
-        desktopView.ShowDelta(delta);
+        bool mistake = !desk.LastDecisionCorrect;
+        hudView.ShowDelta(delta, mistake);
+        desktopView.ShowDelta(delta, mistake);
     }
 }

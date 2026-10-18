@@ -734,3 +734,29 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Faz 1 kodları `Assets/SCRIPTS` yerine **`Assets/Phase1_Scripts`** altında. Faz 1'e eklenen: kriz monitörü geçişi (`CrisisMonitorExit`), menü açıkken girdi beklemesi, 3 dosya.
 - Unity sürümü **6000.3.10f1** ile doğrulandı (Faz 1'in önceki sürümü 6000.3.26f1). Projeyi çekince ilk açılışta içe aktarma birkaç dakika sürer.
 - Bundan sonra Faz 1 değişiklikleri bu birleşik projede yapılmalı.
+
+---
+
+# 🔄 GÜNCELLEME 13 — 18 Ekim 2026 (Claude Code) — PARA, KURAL KİTABI, PENCERE BOYUTU, EKİP SATIN ALMA, FAZ 2 MÜZİĞİ
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 13"TÜR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi.
+
+## ✅ Yapılanlar
+1. **Para sistemi (Faz 1):** doğru karar **+$200**; **ilk yanlış $0** (dosyada "First mistake: no fine this time. Every mistake after this costs $100." uyarısı, bakiyede kırmızı "−$0"); sonraki her yanlış **−$100**.
+2. **Kural kitabı:** her kuralın altındaki **REJECT etiketi kaldırıldı**; yazılar büyüdü (başlık 18→23, metin 16→19, rozet büyüdü) ve metin bir kademe kalın fonta geçti; **önemli ifadeler vurgulu** (ret sebepleri / yasaklar koyu kırmızı, aranacak şeyler koyu lacivert, kalın). En kalabalık sayfa (Bölüm 3) pencereye sığıyor. Sahnedeki sayfalar `RuleBook.DefaultPages` ile güncellendi.
+3. **Bilgisayardaki pencereler boyutlandırılabilir:** her pencerenin sağ alt köşesinde tutamaç (`WindowResizeHandle`, `Win7Window.Init` otomatik ekler). Pencere içerikleri sabit yerleşimli olduğu için **en ve boy birlikte (oran korunarak)** değişir: %60–%160, masaüstünden taşmaz; sürükleme sınırı da yeni boyutu hesaba katar.
+4. **Mesai sonu ekip satın alma ("NIGHT CREW" penceresi, `FleetShop`):** zil çalınca bilgisayarda açılır. **Şehir her birimden 1 tane ücretsiz verir**; ek birimler gündüz kazanılan parayla alınır: polis $100, ambulans $100, itfaiye $150, helikopter $200 (en fazla 3/3/3/2). Kusursuz mesai $600 getirir, hepsini almak $900 → seçim gerekir. Bütçe aşılamaz; eksi bakiye $0 sayılır. **CONFIRM CREW** ile onaylanmadan pencere kapatılamaz ve **kriz monitörü açılmaz** ("Buy your night crew on the computer first"). Görev listesine "Buy your night crew…" eklendi; uzayan liste kutudan taşmasın diye tamamlananlardan son 3'ü görünür.
+5. **Ekip Faz 2'ye taşınır:** yeni `Scripts/Shared/RunLoadout.cs`; Faz 2 (`AStarMovementTester`) araç sayılarını buradan alır, yoksa sahnedeki varsayılan filo (Faz 2 tek başına test edilirken). Ana menü ve Faz 1 başı yeni tur için temizler.
+6. **Faz 2 müziği:** kullanıcının bıraktığı `GAME_JAM/phase 2 background.mp3` (Assets dışındaydı, Unity görmüyordu) → **`Assets/SOUNDS/phase 2 background.mp3`**. Faz 2 sahnesinde `[ZeroHour_NightMusic]` döngüde çalar, ayarlardaki müzik seviyesine bağlı (kurulum aracı ekler).
+
+## 🧪 Test
+- Para: doğru → $200, ilk yanlış → $200 (kırmızı −$0 + açıklama), ikinci yanlış → $100.
+- Kural kitabı ekran görüntüsü; pencere köşeden %77'ye küçüldü, büyütmede masaüstü kenarında durdu.
+- 3 doğru dosya → $600 → zil → NIGHT CREW açıldı; +2 ambulans, +1 itfaiye, +1 helikopter ($550), polis almaya $50 yetmedi (düğme kapalı); onay → 1/3/2/2 → kriz monitörü → Faz 2 filo toplamları **1/3/2/2**; gece müziği çalıyor (34 sn döngü). Hata yok.
+- **Elle test edilmeli:** gerçek fare ile köşeden boyutlandırma, satın alma tıklamaları, müzik.
+
+## ⚠️ Bilinmesi Gerekenler
+- Faz 2 artık oyuncunun aldığı ekiple oynanıyor; en az ekiple (4 araç) zorluk artar. Fiyatlar / ücretsiz ekip `FleetShop` bileşeninde (Inspector) kolayca değiştirilebilir.
+- Ana menüdeki "11 ready" yazısı en kalabalık ekibi gösteriyor; tur başında henüz ekip yok.
+- Faz 1 metinleri (satın alma dahil) İngilizce; Faz 1'de çeviri sistemi yok.

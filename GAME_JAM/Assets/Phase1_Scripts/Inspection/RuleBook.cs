@@ -126,29 +126,24 @@ public class RuleBook : MonoBehaviour
         for (int i = entriesRoot.childCount - 1; i >= 0; i--)
             Destroy(entriesRoot.GetChild(i).gameObject);
 
+        // Okunurluk: büyük ve kalın yazı; önemli ifadeler kural metninde <b>/<color> ile vurgulanır.
+        // (Eskiden her kuralın altında duran "REJECT" etiketi kaldırıldı.)
         float y = 0f;
         foreach (var rule in current.rules)
         {
-            var badge = UIFactory.Image("Badge " + rule.badge, entriesRoot, rule.structural ? badgeRed : badgeNavy, 0f, y, 46f, 28f);
-            UIFactory.Text("Number", badge.transform, pixelFont, 16f, Color.white, rule.badge,
-                0f, 0f, 46f, 28f, TextAlignmentOptions.Center);
+            var badge = UIFactory.Image("Badge " + rule.badge, entriesRoot, rule.structural ? badgeRed : badgeNavy, 0f, y, 52f, 32f);
+            UIFactory.Text("Number", badge.transform, pixelFont, 19f, Color.white, rule.badge,
+                0f, 0f, 52f, 32f, TextAlignmentOptions.Center);
 
-            UIFactory.Text("Title", entriesRoot, boldFont, 18f, UIFactory.Ink, rule.title,
-                TextX, y, EntryWidth - TextX, 28f, TextAlignmentOptions.Left);
+            UIFactory.Text("Title", entriesRoot, boldFont, 23f, UIFactory.Ink, rule.title,
+                TextX, y, EntryWidth - TextX, 32f, TextAlignmentOptions.Left);
 
-            var body = UIFactory.Text("Body", entriesRoot, bodyFont, 16f, UIFactory.Ink, rule.body,
-                TextX, y + 27f, EntryWidth - TextX, 40f, TextAlignmentOptions.TopLeft, true);
+            var body = UIFactory.Text("Body", entriesRoot, boldFont != null ? boldFont : bodyFont, 19f, UIFactory.Ink, rule.body,
+                TextX, y + 35f, EntryWidth - TextX, 40f, TextAlignmentOptions.TopLeft, true);
+            body.richText = true;
             float bodyHeight = body.GetPreferredValues(rule.body, EntryWidth - TextX, 0f).y;
             body.rectTransform.sizeDelta = new Vector2(EntryWidth - TextX, bodyHeight);
-            y += 27f + bodyHeight + 6f;
-
-            if (rule.rejectTag)
-            {
-                var tag = UIFactory.Image("Verdict", entriesRoot, verdictTag, TextX, y, 102f, 22f);
-                UIFactory.Text("Label", tag.transform, pixelFont, 16f, UIFactory.Red, "REJECT",
-                    0f, 0f, 102f, 22f, TextAlignmentOptions.Center);
-                y += 22f;
-            }
+            y += 35f + bodyHeight;
 
             y += 10f;
             UIFactory.DashedLine("Separator", entriesRoot, UIFactory.Border, 0f, y, EntryWidth);
@@ -167,11 +162,11 @@ public class RuleBook : MonoBehaviour
                 rules =
                 {
                     new Rule { badge = "A", title = "Review", rejectTag = false,
-                        body = "Compare what the owner declared with the rules in this handbook. The owner's notes never override a rule." },
+                        body = "Compare what the owner declared with the rules in this handbook. <b><color=#A8241C>The owner's notes never override a rule.</color></b>" },
                     new Rule { badge = "B", title = "Scan", rejectTag = false,
-                        body = "Press X-RAY SCAN to see the floor plan. Red marks show structural damage. Yellow FE marks show fire extinguishers." },
+                        body = "Press <b><color=#1E3A5F>X-RAY SCAN</color></b> to see the floor plan. <b><color=#A8241C>Red marks</color></b> show structural damage. <b><color=#1E3A5F>Yellow FE marks</color></b> show fire extinguishers." },
                     new Rule { badge = "C", title = "Decide", rejectTag = false,
-                        body = "Approve only if the file breaks no rule. To reject, mark every rule the file breaks on the rejection slip." }
+                        body = "Approve <b>only</b> if the file breaks <b>no rule</b>. To reject, mark <b><color=#A8241C>every rule</color></b> the file breaks on the rejection slip." }
                 }
             },
             new Page
@@ -181,9 +176,9 @@ public class RuleBook : MonoBehaviour
                 rules =
                 {
                     new Rule { badge = "1.1", title = "Report Date",
-                        body = $"Inspection files filed before {outdatedBefore} are outdated. An outdated report cannot be approved." },
+                        body = $"Inspection files filed <b><color=#A8241C>before {outdatedBefore}</color></b> are outdated. An outdated report <b>cannot be approved</b>." },
                     new Rule { badge = "1.2", title = "Seal and Signature",
-                        body = "Every file must be signed by the owner and carry the official agency seal. If either one is missing, the file is invalid." }
+                        body = "Every file must be <b><color=#1E3A5F>signed by the owner</color></b> and carry the <b><color=#1E3A5F>official agency seal</color></b>. If either one is missing, the file is <b><color=#A8241C>invalid</color></b>." }
                 }
             },
             new Page
@@ -193,9 +188,9 @@ public class RuleBook : MonoBehaviour
                 rules =
                 {
                     new Rule { badge = "2.1", title = "Load-Bearing System", structural = true,
-                        body = "If the report mentions physical damage to columns or beams, such as cuts, large cracks, thinning or deterioration, the building is marked for demolition regardless of its age." },
+                        body = "If the report mentions <b><color=#A8241C>physical damage to columns or beams</color></b>, such as cuts, large cracks, thinning or deterioration, the building is <b><color=#A8241C>marked for demolition</color></b> regardless of its age." },
                     new Rule { badge = "2.2", title = "Commercial Ground Floors", structural = true,
-                        body = "Buildings with a business on the ground floor (shop, market, car dealer, warehouse) must include a Load-Bearing Wall Supplement. If it is missing, the file cannot be approved." }
+                        body = "Buildings with a <b>business on the ground floor</b> (shop, market, car dealer, warehouse) must include a <b><color=#1E3A5F>Load-Bearing Wall Supplement</color></b>. If it is missing, the file <b><color=#A8241C>cannot be approved</color></b>." }
                 }
             },
             new Page
@@ -205,11 +200,11 @@ public class RuleBook : MonoBehaviour
                 rules =
                 {
                     new Rule { badge = "3.1", title = "Fire Extinguisher",
-                        body = "The X-RAY floor plan must show at least one fire extinguisher (yellow FE mark)." },
+                        body = "The X-RAY floor plan must show <b><color=#1E3A5F>at least one fire extinguisher</color></b> (yellow FE mark)." },
                     new Rule { badge = "3.2", title = "Emergency Exits",
-                        body = "All emergency exits must be open and accessible. Locked or blocked exits are grounds for rejection." },
+                        body = "All emergency exits must be <b><color=#1E3A5F>open and accessible</color></b>. <b><color=#A8241C>Locked or blocked exits</color></b> are grounds for rejection." },
                     new Rule { badge = "3.3", title = "Emergency Bag",
-                        body = "The emergency bag must contain water, a flashlight, a first aid kit and a whistle. If any item is missing, the bag is incomplete." }
+                        body = "The emergency bag must contain <b><color=#1E3A5F>water, a flashlight, a first aid kit and a whistle</color></b>. If <b><color=#A8241C>any item is missing</color></b>, the bag is incomplete." }
                 }
             },
             new Page
@@ -219,7 +214,7 @@ public class RuleBook : MonoBehaviour
                 rules =
                 {
                     new Rule { badge = "4.1", title = "Bribery",
-                        body = "Money, gifts or envelopes attached to a file are bribes. Reject the file and cite this rule. Letters from architects or engineers are not bribes." }
+                        body = "<b><color=#A8241C>Money, gifts or envelopes</color></b> attached to a file are bribes. Reject the file and cite this rule. <b><color=#1E3A5F>Letters from architects or engineers are not bribes.</color></b>" }
                 }
             }
         };

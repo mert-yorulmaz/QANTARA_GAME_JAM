@@ -21,6 +21,7 @@ public class InspectionDesk : MonoBehaviour
 
     [Header("Money")]
     public int correctReward = 200;
+    [Tooltip("İlk hata cezasızdır (oyuncu hatasını öğrensin); sonraki her hata bu kadar keser.")]
     public int wrongPenalty = 100;
 
     [Header("Windows")]
@@ -115,6 +116,8 @@ public class InspectionDesk : MonoBehaviour
     // Bakiye değişince farkla birlikte bildirilir (+200 / -100).
     public event Action<int> MoneyChanged;
     public int Money { get; private set; }
+    // Son kararın doğru olup olmadığı (ilk hatada fark $0 olsa da kırmızı "-$0" gösterilsin diye)
+    public bool LastDecisionCorrect { get; private set; } = true;
     public int ReviewedCount => archive.Count;
     public int CaseCount => cases.Count;
 
@@ -434,10 +437,15 @@ public class InspectionDesk : MonoBehaviour
             errors++;
         StartCoroutine(PlayResult(correct));
 
-        int delta = correct ? correctReward : -wrongPenalty;
+        // İlk hata uyarıdır ($0), sonraki her hata ceza keser
+        bool firstMistake = !correct && errors == 1;
+        int delta = correct ? correctReward : (firstMistake ? 0 : -wrongPenalty);
         Money += delta;
+        LastDecisionCorrect = correct;
         MoneyChanged?.Invoke(delta);
-        message += "  " + FormatDelta(delta);
+        message += "  " + (firstMistake ? "-$0" : FormatDelta(delta));
+        if (firstMistake)
+            message += $"\n<size=85%>First mistake: no fine this time. Every mistake after this costs {FormatMoney(wrongPenalty)}.</size>";
 
         archive.Add(new ArchiveEntry
         {
@@ -472,8 +480,8 @@ public class InspectionDesk : MonoBehaviour
     void EndShift()
     {
         rejectionSlip.Close();
-        ShowSummary("SHIFT OVER", "The bell has rung. Your night shift is next. Go to the crisis monitor on the wall.");
-        desktop.Notify($"Shift over · {clock.TimeText}", "The bell has rung. Your night shift is next. Leave your desk and go to the crisis monitor on the wall.");
+        ShowSummary("SHIFT OVER", "The bell has rung. Build your night crew in the NIGHT CREW window, then go to the crisis monitor on the wall.");
+        desktop.Notify($"Shift over · {clock.TimeText}", $"You earned {FormatMoney(Money)}. Spend it on your night crew in the NIGHT CREW window.");
     }
 
     void ShowSummary(string heading, string message)

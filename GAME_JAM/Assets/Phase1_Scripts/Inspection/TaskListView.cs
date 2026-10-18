@@ -75,22 +75,23 @@ public class TaskListView : MonoBehaviour
         balanceText.color = money < 0 ? NegativeColor : Color.white;
     }
 
-    public void ShowDelta(int delta)
+    public void ShowDelta(int delta, bool mistake = false)
     {
         if (!isActiveAndEnabled)
             return;
 
         if (deltaRoutine != null)
             StopCoroutine(deltaRoutine);
-        deltaRoutine = StartCoroutine(DeltaRoutine(delta));
+        deltaRoutine = StartCoroutine(DeltaRoutine(delta, mistake));
     }
 
-    IEnumerator DeltaRoutine(int delta)
+    IEnumerator DeltaRoutine(int delta, bool mistake)
     {
         var rt = deltaText.rectTransform;
         Vector2 start = rt.anchoredPosition;
-        Color color = delta >= 0 ? PositiveColor : NegativeColor;
-        deltaText.text = InspectionDesk.FormatDelta(delta);
+        // İlk hata cezasız ama yine de hata: kırmızı "-$0"
+        Color color = delta < 0 || mistake ? NegativeColor : PositiveColor;
+        deltaText.text = mistake && delta == 0 ? "-$0" : InspectionDesk.FormatDelta(delta);
         deltaText.gameObject.SetActive(true);
 
         const float duration = 1.6f;

@@ -21,6 +21,8 @@ public class CrisisMonitorExit : MonoBehaviour
     public Image fadePanel;
     [Tooltip("Geçişte kapatılır (yürüme, kamera).")]
     public Behaviour[] disableOnEnter;
+    [Tooltip("Gece ekibi bilgisayarda onaylanmadan monitöre geçilmez.")]
+    public FleetShop shop;
     [Tooltip("Geçişte gizlenir (görev kutusu gibi ekran arayüzü).")]
     public GameObject[] hideOnEnter;
 
@@ -104,7 +106,11 @@ public class CrisisMonitorExit : MonoBehaviour
             return;
         }
 
-        if (poweredOn)
+        if (poweredOn && shop != null && !shop.Confirmed)
+        {
+            ShowPrompt("Buy your night crew on the computer first");
+        }
+        else if (poweredOn)
         {
             ShowPrompt("[E] Start the night shift");
             if (Keyboard.current.eKey.wasPressedThisFrame)

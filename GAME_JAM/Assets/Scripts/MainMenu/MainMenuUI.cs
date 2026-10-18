@@ -62,6 +62,7 @@ namespace ZeroHour.MainMenu
         {
             // Faz 2 karnesinden (oyun durmuşken) dönülebilir; menü fareyle kullanılır
             Time.timeScale = 1f;
+            RunLoadout.Clear(); // Yeni tur: önceki turun gece ekibi taşınmasın
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
 

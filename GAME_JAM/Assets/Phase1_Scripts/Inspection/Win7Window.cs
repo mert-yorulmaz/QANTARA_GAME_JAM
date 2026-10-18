@@ -24,6 +24,12 @@ public class Win7Window : MonoBehaviour
         desktop = owner;
         minimizeButton.onClick.AddListener(Minimize);
         closeButton.onClick.AddListener(Close);
+
+        // Sağ alt köşeden boyutlandırma (sahneyi yeniden kurmadan her pencereye eklenir)
+        var drag = GetComponent<WindowDragHandle>();
+        if (drag != null && GetComponentInChildren<WindowResizeHandle>(true) == null)
+            WindowResizeHandle.Attach((RectTransform)transform, drag.bounds);
+
         gameObject.SetActive(false);
     }
 

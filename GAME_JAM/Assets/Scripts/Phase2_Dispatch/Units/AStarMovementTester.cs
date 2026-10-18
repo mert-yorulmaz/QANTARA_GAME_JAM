@@ -112,6 +112,15 @@ namespace ZeroHour.Phase2.Units
         private void Start()
         {
             AutoAssignFourUnits();
+
+            // Faz 1'de satın alınan ekip (yoksa sahnedeki varsayılan filo)
+            if (ZeroHour.Shared.RunLoadout.IsSet)
+            {
+                policeCount = ZeroHour.Shared.RunLoadout.Police;
+                ambulanceCount = ZeroHour.Shared.RunLoadout.Ambulance;
+                fireTruckCount = ZeroHour.Shared.RunLoadout.FireTruck;
+                helicopterCount = ZeroHour.Shared.RunLoadout.Helicopter;
+            }
             CreateFleetPool();
             InitializeVehicles();
             CreateTargetMarker();

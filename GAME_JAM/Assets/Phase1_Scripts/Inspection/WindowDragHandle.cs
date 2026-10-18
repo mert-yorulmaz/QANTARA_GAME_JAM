@@ -25,7 +25,8 @@ public class WindowDragHandle : MonoBehaviour, IBeginDragHandler, IDragHandler
 
     public Vector2 Clamp(Vector2 position)
     {
-        Vector2 size = window.sizeDelta;
+        // Boyutlandırılmış pencerenin ekrandaki gerçek boyutu
+        Vector2 size = Vector2.Scale(window.sizeDelta, window.localScale);
         position.x = Mathf.Clamp(position.x, 0f, Mathf.Max(0f, bounds.rect.width - size.x));
         position.y = Mathf.Clamp(position.y, -Mathf.Max(0f, bounds.rect.height - size.y), 0f);
         return position;
