@@ -6,8 +6,11 @@ namespace ZeroHour.Phase2.Calls
 {
     public enum CallIncidentKind
     {
-        Fire,      // marker_fire     -> İtfaiye gerekir
-        Collapse   // marker_collapse -> Ambulans gerekir
+        Fire,          // marker_fire     -> İtfaiye gerekir
+        Collapse,      // marker_collapse -> Deprem çökmesi: Ambulans gerekir
+        GasExplosion,  // marker_gas      -> İtfaiye gerekir
+        Flood,         // marker_flood    -> Sel: çatıdan tahliye, Helikopter gerekir
+        Unrest         // marker_unrest   -> Yağma / asayiş: Polis gerekir
     }
 
     public enum CallIncidentStatus
@@ -59,17 +62,47 @@ namespace ZeroHour.Phase2.Calls
         public float currentWorkRate;
 
         public IncidentMarker marker;
+        public DisasterFx effects;
 
         /// <summary>Olayı gerçekten çözen birim tipi.</summary>
-        public UnitType RequiredUnit => kind == CallIncidentKind.Fire ? UnitType.FireEngine : UnitType.Ambulance;
+        public UnitType RequiredUnit
+        {
+            get
+            {
+                switch (kind)
+                {
+                    case CallIncidentKind.Fire: return UnitType.FireEngine;
+                    case CallIncidentKind.GasExplosion: return UnitType.FireEngine;
+                    case CallIncidentKind.Flood: return UnitType.RescueHelicopter;
+                    case CallIncidentKind.Unrest: return UnitType.PoliceCruiser;
+                    default: return UnitType.Ambulance;
+                }
+            }
+        }
 
         /// <summary>İş hızı katkısı: gerekli ekip 1, olası (yardımcı) ekip 0.5, ilgisiz ekip 0.</summary>
         public float RoleWeight(UnitType role)
         {
             if (role == RequiredUnit) return 1f;
-            if (kind == CallIncidentKind.Fire) return role == UnitType.Ambulance ? 0.5f : 0f;
-            return (role == UnitType.FireEngine || role == UnitType.PoliceCruiser) ? 0.5f : 0f;
+            switch (kind)
+            {
+                case CallIncidentKind.Fire:
+                    return role == UnitType.Ambulance ? 0.5f : 0f;
+                case CallIncidentKind.Collapse:
+                    return (role == UnitType.FireEngine || role == UnitType.PoliceCruiser) ? 0.5f : 0f;
+                case CallIncidentKind.GasExplosion:
+                    return (role == UnitType.Ambulance || role == UnitType.PoliceCruiser) ? 0.5f : 0f;
+                case CallIncidentKind.Flood:
+                    return (role == UnitType.Ambulance || role == UnitType.FireEngine) ? 0.5f : 0f;
+                case CallIncidentKind.Unrest:
+                    return role == UnitType.Ambulance ? 0.5f : 0f;
+                default:
+                    return 0f;
+            }
         }
+
+        /// <summary>Selde helikopter rolünden bağımsız olarak kendisi (çatıdan tahliye) sayılır.</summary>
+        public bool HelicopterActsAsItself => RequiredUnit == UnitType.RescueHelicopter;
 
         /// <summary>Kalan iş süresi (sn), mevcut hızla.</summary>
         public float WorkSecondsLeft => currentWorkRate > 0.001f ? Mathf.Max(0f, workRequired - workDone) / currentWorkRate : Mathf.Max(0f, workRequired - workDone);

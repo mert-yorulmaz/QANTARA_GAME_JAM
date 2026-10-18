@@ -88,6 +88,9 @@ namespace ZeroHour.Phase2.Editor
             boardSo.FindProperty("markerPrefab").objectReferenceValue = markerPrefab;
             boardSo.FindProperty("fireMarkerSprite").objectReferenceValue = fireMarker;
             boardSo.FindProperty("collapseMarkerSprite").objectReferenceValue = collapseMarker;
+            boardSo.FindProperty("gasMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_gas", new Color(1f, 0.45f, 0.15f), ExplosionIcon);
+            boardSo.FindProperty("floodMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_flood", new Color(0.25f, 0.65f, 1f), WaveIcon);
+            boardSo.FindProperty("unrestMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_unrest", new Color(0.66f, 0.42f, 1f), AlarmIcon);
             boardSo.FindProperty("unattendedTimeout").floatValue = 45f;
             boardSo.FindProperty("respondingTimeout").floatValue = 60f;
             boardSo.FindProperty("maxActiveIncidents").intValue = 5;
@@ -95,6 +98,11 @@ namespace ZeroHour.Phase2.Editor
             excluded.arraySize = stationBuildings.Count;
             for (int i = 0; i < stationBuildings.Count; i++) excluded.GetArrayElementAtIndex(i).objectReferenceValue = stationBuildings[i];
             boardSo.ApplyModifiedPropertiesWithoutUndo();
+
+            // Afet efektleri: materyaller sahnede referanslı olsun ki build'e girsin
+            DisasterFxLibrary fxLibrary = GetOrAdd<DisasterFxLibrary>(systemObj);
+            BuildFxMaterials(fxLibrary);
+            if (gameCamera != null) GetOrAdd<CameraShake>(gameCamera.gameObject);
 
             AudioSource callAudio = GetOrAdd<AudioSource>(systemObj);
             callAudio.playOnAwake = false;
@@ -382,6 +390,216 @@ namespace ZeroHour.Phase2.Editor
                 legacy.SetActive(false);
                 Debug.Log("[ZeroHour] Eski 'Canvas' (anel_Units görselleri) pasif yapıldı, yeni HUD onun yerine geçti.");
             }
+        }
+
+        // ==========================================
+        // AFET EFEKT MATERYALLERİ
+        // ==========================================
+
+        private const string FxDir = PrefabDir + "/FX";
+
+        private static void BuildFxMaterials(DisasterFxLibrary library)
+        {
+            EnsureFolder(FxDir);
+            Texture2D soft = GetOrCreateSoftParticleTexture();
+
+            library.additive = GetOrCreateParticleMaterial("FX_Additive", soft, true);
+            library.alphaBlended = GetOrCreateParticleMaterial("FX_Alpha", soft, false);
+            library.debris = GetOrCreateParticleMaterial("FX_Debris", null, false);
+            library.water = GetOrCreateWaterMaterial();
+            EditorUtility.SetDirty(library);
+        }
+
+        /// <summary>Yumuşak kenarlı daire (duman, alev, toz parçacığı).</summary>
+        private static Texture2D GetOrCreateSoftParticleTexture()
+        {
+            // v2: daha dolgun kenar (duman / toz uzaktan da okunsun). Eski sürüm varsa silinir.
+            string oldPath = FxDir + "/fx_soft_circle.png";
+            if (System.IO.File.Exists(oldPath)) AssetDatabase.DeleteAsset(oldPath);
+
+            string path = FxDir + "/fx_soft_circle_v2.png";
+            if (!System.IO.File.Exists(path))
+            {
+                const int Size = 64;
+                Texture2D tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
+                    {
+                        float dx = (x + 0.5f) / Size * 2f - 1f;
+                        float dy = (y + 0.5f) / Size * 2f - 1f;
+                        float d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float a = Mathf.Clamp01(1f - Mathf.Pow(d, 1.6f));
+                        tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                    }
+                }
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+
+                TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                importer.textureType = TextureImporterType.Default;
+                importer.alphaIsTransparency = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        }
+
+        private static Material GetOrCreateParticleMaterial(string name, Texture2D texture, bool additive)
+        {
+            string path = $"{FxDir}/{name}.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                mat = new Material(shader) { name = name };
+                AssetDatabase.CreateAsset(mat, path);
+            }
+
+            // URP Particles/Unlit: saydam yüzey; additive (alev) veya alfa karışımı (duman)
+            mat.SetFloat("_Surface", 1f);
+            mat.SetFloat("_Blend", additive ? 2f : 0f);
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", additive ? (float)UnityEngine.Rendering.BlendMode.One : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            mat.SetFloat("_DstBlendAlpha", additive ? (float)UnityEngine.Rendering.BlendMode.One : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_ZWrite", 0f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.SetColor("_BaseColor", Color.white);
+            if (texture != null) mat.SetTexture("_BaseMap", texture);
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        private static Material GetOrCreateWaterMaterial()
+        {
+            string path = FxDir + "/FX_FloodWater.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = "FX_FloodWater" };
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.SetFloat("_Surface", 1f);
+            mat.SetFloat("_Blend", 0f);
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            mat.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetFloat("_ZWrite", 0f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.SetColor("_BaseColor", new Color(0.22f, 0.5f, 0.85f, 0.6f));
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        // ==========================================
+        // YENİ AFET ROZETLERİ (Yağız'ın rozet çerçevesi + yeni renk halka + piksel ikon)
+        // ==========================================
+
+        private static readonly string[] ExplosionIcon =
+        {
+            "#...#...#.",
+            ".#..#..#..",
+            "..#####...",
+            ".#######..",
+            "#########.",
+            ".#######..",
+            "..#####...",
+            ".#..#..#..",
+            "#...#...#.",
+            "..........",
+        };
+
+        private static readonly string[] WaveIcon =
+        {
+            "..........",
+            "..##...##.",
+            ".#..#.#..#",
+            "#....#....",
+            "..........",
+            "..##...##.",
+            ".#..#.#..#",
+            "#....#....",
+            "..........",
+            "..........",
+        };
+
+        private static readonly string[] AlarmIcon =
+        {
+            "....##....",
+            "...####...",
+            "...####...",
+            "...####...",
+            "....##....",
+            "....##....",
+            "..........",
+            "....##....",
+            "....##....",
+            "..........",
+        };
+
+        private static Sprite GenerateMarkerSprite(string name, Color ringColor, string[] icon)
+        {
+            string dir = PrefabDir + "/Markers";
+            EnsureFolder(dir);
+            string path = $"{dir}/{name}.png";
+
+            if (!System.IO.File.Exists(path))
+            {
+                // Kaynak: marker_collapse (koyu daire + açık halka). Dosyadan okunur, böylece okunabilir kopya elde edilir.
+                Texture2D src = new Texture2D(2, 2);
+                src.LoadImage(System.IO.File.ReadAllBytes(UiDir + "marker_collapse.png"));
+                int w = src.width, h = src.height;
+                Vector2 c = new Vector2(w * 0.5f, h * 0.5f);
+                float innerRadius = w * 0.38f;
+                Color inner = src.GetPixel(w / 2, Mathf.RoundToInt(h * 0.22f)); // halkanın içindeki koyu zemin
+
+                Texture2D dst = new Texture2D(w, h, TextureFormat.RGBA32, false);
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = 0; x < w; x++)
+                    {
+                        Color p = src.GetPixel(x, y);
+                        float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), c);
+                        if (p.a > 0.01f && d <= innerRadius) p = new Color(inner.r, inner.g, inner.b, p.a);      // eski ikonu sil
+                        else if (p.a > 0.01f) p = new Color(ringColor.r, ringColor.g, ringColor.b, p.a);         // halkayı boya
+                        dst.SetPixel(x, y, p);
+                    }
+                }
+
+                // 10x10 piksel ikon, 4 kat büyütülerek ortaya
+                int cell = Mathf.Max(1, w / 22);
+                int iconSize = 10 * cell;
+                int ox = (w - iconSize) / 2;
+                int oy = (h - iconSize) / 2;
+                for (int iy = 0; iy < 10; iy++)
+                {
+                    for (int ix = 0; ix < 10; ix++)
+                    {
+                        if (icon[iy][ix] != '#') continue;
+                        for (int py = 0; py < cell; py++)
+                        {
+                            for (int px = 0; px < cell; px++)
+                            {
+                                dst.SetPixel(ox + ix * cell + px, oy + (9 - iy) * cell + py, Color.white);
+                            }
+                        }
+                    }
+                }
+
+                System.IO.File.WriteAllBytes(path, dst.EncodeToPNG());
+                Object.DestroyImmediate(src);
+                Object.DestroyImmediate(dst);
+                AssetDatabase.ImportAsset(path);
+            }
+
+            return LoadSpriteAt(path, false);
         }
 
         // ==========================================

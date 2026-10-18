@@ -21,6 +21,16 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private IncidentMarker markerPrefab;
         [SerializeField] private Sprite fireMarkerSprite;
         [SerializeField] private Sprite collapseMarkerSprite;
+        [SerializeField] private Sprite gasMarkerSprite;
+        [SerializeField] private Sprite floodMarkerSprite;
+        [SerializeField] private Sprite unrestMarkerSprite;
+
+        [Header("Afet Çeşitliliği (çıkma ağırlıkları)")]
+        [SerializeField] private float fireWeight = 30f;
+        [SerializeField] private float collapseWeight = 25f;
+        [SerializeField] private float gasWeight = 15f;
+        [SerializeField] private float floodWeight = 15f;
+        [SerializeField] private float unrestWeight = 15f;
 
         [Header("Olay Kuralları")]
         [Tooltip("Ekip gönderilmezse bu süre sonunda yaralılar kaybedilir ve rozet kalkar (sn)")]
@@ -32,6 +42,9 @@ namespace ZeroHour.Phase2.Calls
         [Tooltip("Aynı işi yapan her ek araç işi hızlandırır: 3 itfaiye = 3 kat hızlı")]
         [SerializeField] private float fireWorkSeconds = 24f;
         [SerializeField] private float collapseWorkSeconds = 30f;
+        [SerializeField] private float gasWorkSeconds = 28f;
+        [SerializeField] private float floodWorkSeconds = 26f;
+        [SerializeField] private float unrestWorkSeconds = 18f;
         [Tooltip("İşe katkısı olmayan ekipler gönderilse bile iş bu en düşük hızla ilerler")]
         [SerializeField] private float minimumWorkRate = 0.25f;
         [SerializeField] private int minInjured = 2;
@@ -60,6 +73,7 @@ namespace ZeroHour.Phase2.Calls
         private const string FireTruckTag = "<color=#D63A2A>Fire Truck</color>";
         private const string PoliceTag = "<color=#2563D9>Police</color>";
         private const string AmbulanceTag = "<mark=#2A231BE6><color=#FFFFFF> Ambulance </color></mark>";
+        private const string HelicopterTag = "<color=#B98A00>Helicopter</color>";
 
         public int WaitingCount
         {
@@ -92,6 +106,27 @@ namespace ZeroHour.Phase2.Calls
             "Cracked columns were reported at inspection. Building partly collapsed, people trapped.",
             "Unsecured shelves and wardrobes fell over. Residents trapped inside.",
             "A load-bearing column was removed downstairs. Upper floors came down."
+        };
+
+        private static readonly string[] GasNotes =
+        {
+            "Faulty gas valve passed inspection. Explosion on the ground floor, fire spreading.",
+            "Residents reported a gas smell for days. The boiler room exploded.",
+            "Illegal gas line extension ruptured. Windows blown out on three floors."
+        };
+
+        private static readonly string[] FloodNotes =
+        {
+            "Building sits on a filled-in stream bed. Ground floor flooded, families on the roof.",
+            "Blocked storm drains, no sandbags. Water rising fast around the entrance.",
+            "Basement apartments flooded. Elderly residents cannot reach the stairs."
+        };
+
+        private static readonly string[] UnrestNotes =
+        {
+            "Shops looted after the tremor. Crowd blocking the street, people injured.",
+            "Panic at the shelter entrance. Fights breaking out, barricade on fire.",
+            "Store alarm ringing, windows smashed. Residents afraid to leave the building."
         };
 
         private void Awake()
@@ -158,9 +193,10 @@ namespace ZeroHour.Phase2.Calls
             if (building == null) return null;
 
             Bounds bounds = CalculateBounds(building);
-            CallIncidentKind kind = UnityEngine.Random.value < 0.5f ? CallIncidentKind.Fire : CallIncidentKind.Collapse;
+            CallIncidentKind kind = PickKind();
             string street = Streets[UnityEngine.Random.Range(0, Streets.Length)];
-            int injured = UnityEngine.Random.Range(minInjured, maxInjured + 1);
+            Vector2Int injuredRange = InjuredRangeFor(kind);
+            int injured = UnityEngine.Random.Range(injuredRange.x, injuredRange.y + 1);
 
             IncidentReport report = new IncidentReport
             {
@@ -170,15 +206,11 @@ namespace ZeroHour.Phase2.Calls
                 buildingBounds = bounds,
                 sitePosition = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z),
                 markerAnchor = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z),
-                incidentTitle = kind == CallIncidentKind.Fire ? "Residential fire" : "Earthquake collapse",
-                possibleUnitsText = kind == CallIncidentKind.Fire
-                    ? $"Possible units: {FireTruckTag}, {AmbulanceTag}"
-                    : $"Possible units: {AmbulanceTag}, {FireTruckTag}, {PoliceTag}",
+                incidentTitle = TitleFor(kind),
+                possibleUnitsText = "Possible units: " + PossibleUnitsFor(kind),
                 address = $"{UnityEngine.Random.Range(2, 99)} {street}",
                 streetShort = ShortStreet(street),
-                notes = kind == CallIncidentKind.Fire
-                    ? FireNotes[UnityEngine.Random.Range(0, FireNotes.Length)]
-                    : CollapseNotes[UnityEngine.Random.Range(0, CollapseNotes.Length)],
+                notes = RandomNote(kind),
                 callTime = GetClockTime(),
                 line = UnityEngine.Random.Range(1, 5),
                 injured = injured,
@@ -186,16 +218,19 @@ namespace ZeroHour.Phase2.Calls
                 urgent = injured >= 5,
                 timeRemaining = unattendedTimeout,
                 timeLimit = unattendedTimeout,
-                workRequired = kind == CallIncidentKind.Fire ? fireWorkSeconds : collapseWorkSeconds
+                workRequired = WorkSecondsFor(kind)
             };
 
             if (markerPrefab != null)
             {
                 IncidentMarker marker = Instantiate(markerPrefab, report.markerAnchor, Quaternion.identity, transform);
                 marker.name = $"IncidentMarker_{report.caseNumber}";
-                marker.Initialize(report, kind == CallIncidentKind.Fire ? fireMarkerSprite : collapseMarkerSprite);
+                marker.Initialize(report, MarkerFor(kind));
                 report.marker = marker;
             }
+
+            // Afet efekti: alev, duman, sarsıntı, su, alarm ışığı...
+            report.effects = DisasterFx.Spawn(report);
 
             activeIncidents.Add(report);
             if (CityStatsManager.Instance != null) CityStatsManager.Instance.AddCiviliansAtRisk(report.injured);
@@ -203,6 +238,95 @@ namespace ZeroHour.Phase2.Calls
             Debug.Log($"<color=orange>[Incidents] 📍 Case #{report.caseNumber}: {report.incidentTitle} @ {building.name} ({report.injured} yaralı)</color>");
             OnIncidentCreated?.Invoke(report);
             return report;
+        }
+
+        // ==========================================
+        // AFET KATALOĞU
+        // ==========================================
+
+        private CallIncidentKind PickKind()
+        {
+            float total = fireWeight + collapseWeight + gasWeight + floodWeight + unrestWeight;
+            float roll = UnityEngine.Random.value * Mathf.Max(0.01f, total);
+            if ((roll -= fireWeight) < 0f) return CallIncidentKind.Fire;
+            if ((roll -= collapseWeight) < 0f) return CallIncidentKind.Collapse;
+            if ((roll -= gasWeight) < 0f) return CallIncidentKind.GasExplosion;
+            if ((roll -= floodWeight) < 0f) return CallIncidentKind.Flood;
+            return CallIncidentKind.Unrest;
+        }
+
+        private static string TitleFor(CallIncidentKind kind)
+        {
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: return "Residential fire";
+                case CallIncidentKind.Collapse: return "Earthquake collapse";
+                case CallIncidentKind.GasExplosion: return "Gas explosion";
+                case CallIncidentKind.Flood: return "Flash flood";
+                default: return "Looting & unrest";
+            }
+        }
+
+        private static string PossibleUnitsFor(CallIncidentKind kind)
+        {
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: return $"{FireTruckTag}, {AmbulanceTag}";
+                case CallIncidentKind.Collapse: return $"{AmbulanceTag}, {FireTruckTag}, {PoliceTag}";
+                case CallIncidentKind.GasExplosion: return $"{FireTruckTag}, {AmbulanceTag}, {PoliceTag}";
+                case CallIncidentKind.Flood: return $"{HelicopterTag}, {AmbulanceTag}, {FireTruckTag}";
+                default: return $"{PoliceTag}, {AmbulanceTag}";
+            }
+        }
+
+        private static string RandomNote(CallIncidentKind kind)
+        {
+            string[] pool;
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: pool = FireNotes; break;
+                case CallIncidentKind.Collapse: pool = CollapseNotes; break;
+                case CallIncidentKind.GasExplosion: pool = GasNotes; break;
+                case CallIncidentKind.Flood: pool = FloodNotes; break;
+                default: pool = UnrestNotes; break;
+            }
+            return pool[UnityEngine.Random.Range(0, pool.Length)];
+        }
+
+        private float WorkSecondsFor(CallIncidentKind kind)
+        {
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: return fireWorkSeconds;
+                case CallIncidentKind.Collapse: return collapseWorkSeconds;
+                case CallIncidentKind.GasExplosion: return gasWorkSeconds;
+                case CallIncidentKind.Flood: return floodWorkSeconds;
+                default: return unrestWorkSeconds;
+            }
+        }
+
+        private Vector2Int InjuredRangeFor(CallIncidentKind kind)
+        {
+            switch (kind)
+            {
+                case CallIncidentKind.GasExplosion: return new Vector2Int(Mathf.Max(minInjured, 4), maxInjured + 2);
+                case CallIncidentKind.Unrest: return new Vector2Int(1, Mathf.Max(2, minInjured + 2));
+                default: return new Vector2Int(minInjured, maxInjured);
+            }
+        }
+
+        private Sprite MarkerFor(CallIncidentKind kind)
+        {
+            Sprite s;
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: s = fireMarkerSprite; break;
+                case CallIncidentKind.Collapse: s = collapseMarkerSprite; break;
+                case CallIncidentKind.GasExplosion: s = gasMarkerSprite; break;
+                case CallIncidentKind.Flood: s = floodMarkerSprite; break;
+                default: s = unrestMarkerSprite; break;
+            }
+            return s != null ? s : fireMarkerSprite;
         }
 
         private Transform PickFreeBuilding()
@@ -347,6 +471,7 @@ namespace ZeroHour.Phase2.Calls
                 }
 
                 UnitType role = (heliRoles != null && heliIndex < heliRoles.Count) ? heliRoles[heliIndex] : report.RequiredUnit;
+                if (report.HelicopterActsAsItself) role = UnitType.RescueHelicopter; // Selde helikopter çatıdan tahliye yapar
                 report.heliRoles.Add(role);
                 report.sentRoles.Add(role);
                 heliIndex++;
@@ -416,6 +541,13 @@ namespace ZeroHour.Phase2.Calls
         {
             report.status = CallIncidentStatus.Closed;
             activeIncidents.Remove(report);
+
+            // Afet efekti sönerek kapanır (su çekilir, duman dağılır, binalar eski yerinde)
+            if (report.effects != null)
+            {
+                report.effects.Stop();
+                report.effects = null;
+            }
 
             // Olay yerinde bekleyen / yolda olan araçlar üsse dönsün
             if (AStarMovementTester.Instance != null) AStarMovementTester.Instance.ReleaseSite(report.sitePosition);

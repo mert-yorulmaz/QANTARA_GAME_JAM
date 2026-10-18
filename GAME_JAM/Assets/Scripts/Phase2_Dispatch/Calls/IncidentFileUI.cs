@@ -179,8 +179,10 @@ namespace ZeroHour.Phase2.Calls
             current = report;
             foreach (UnitRow row in unitRows) row.selected = 0;
 
-            // Helikopter rolü varsayılanı: olayı çözen ekip (yangın → itfaiye, çökme → ambulans)
-            foreach (HeliRoleSlot slot in heliRoleSlots) slot.role = report.RequiredUnit;
+            // Helikopter rolü varsayılanı: olayı çözen ekip (yangın → itfaiye, çökme → ambulans).
+            // Selde helikopter zaten kendisi (tahliye) sayılır; rol bölmesi gösterilmez.
+            UnitType defaultRole = report.HelicopterActsAsItself ? UnitType.Ambulance : report.RequiredUnit;
+            foreach (HeliRoleSlot slot in heliRoleSlots) slot.role = defaultRole;
 
             SetText(caseTabText, $"CASE #{report.caseNumber:0000}");
             SetText(stampText, report.urgent ? "URGENT" : "ROUTINE");
@@ -253,7 +255,7 @@ namespace ZeroHour.Phase2.Calls
                 if (row.plusButton != null) row.plusButton.interactable = waiting && row.selected < max;
             }
 
-            RefreshHeliSlots(waiting ? helisSelected : 0);
+            RefreshHeliSlots(waiting && !current.HelicopterActsAsItself ? helisSelected : 0);
 
             string timeLeft = waiting
                 ? $" · {Mathf.CeilToInt(Mathf.Max(0f, current.timeRemaining))}s left"
