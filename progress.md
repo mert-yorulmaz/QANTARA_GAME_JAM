@@ -425,3 +425,50 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - **Tam ekran** ayarı sadece build'de etkili (editörde görünür değişiklik olmaz).
 - Takılma kurtarıcısı devreye girdiğinde araçlar kısa süre birbirine çok yaklaşabilir (çarpışma önleyici NavMesh'e kalır).
 - Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, çağrı sesleri.
+
+---
+---
+
+# 🔄 GÜNCELLEME 7 — 18 Ekim 2026, ~06:20 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 7"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+> Kullanıcı isteği: "Faz 2'de yapabileceğin her şey + oynanış çeşitliliği, farklı afetler (dağ olmadığı için çığ yok) ve afetlere özel efektler."
+
+## ✅ Yapılanlar (Play Mode'da Test Edildi)
+
+1. **5 afet türü** (haritaya uygun; çığ gibi dağ gerektirenler yok). Her birinin kendi gerekli / yardımcı ekibi, iş süresi, yaralı aralığı, notları ve rozeti var:
+
+   | Afet | Gerekli | Yardımcı (0.5x) | İş süresi | Çıkma ağırlığı |
+   | :--- | :--- | :--- | :---: | :---: |
+   | Yangın | İtfaiye | Ambulans | 24 sn | 30 |
+   | Deprem göçüğü | Ambulans | İtfaiye, Polis | 30 sn | 25 |
+   | Doğalgaz patlaması | İtfaiye | Ambulans, Polis | 28 sn | 15 |
+   | Ani sel | **Helikopter** (çatıdan tahliye; rolü ne olursa olsun) | Ambulans, İtfaiye | 26 sn | 15 |
+   | Yağma ve kargaşa | Polis | Ambulans | 18 sn | 15 |
+
+   *Test: sele 2 helikopter (farklı roller seçilse de) → ikisi de tahliye sayıldı, hız 2x; yağmaya 2 polis → çözüldü; 9 sivil kurtarıldı.*
+2. **Afete özel efektler** (`DisasterFx`, hepsi kodla, binanın boyutuna göre ölçekli; olay kapanınca sönerek kaybolur, binaların materyallerine dokunmaz):
+   - **Yangın:** binanın üst yarısını saran alevler, uzaktan görünen duman sütunu, kıvılcım, titreyen turuncu ışık.
+   - **Deprem:** 35 m içindeki **binaların sallanması** (merkeze yakın olan daha çok), kamera sarsıntısı, toz bulutu, düşen moloz, 8–14 sn'de bir **artçı sarsıntı**. Binalar sarsıntıdan sonra **birebir eski yerine** döner (test: konum farkı 0.0000) ve sallanma NavMesh engel eşiğinin altında kalır (araç yolları bozulmaz).
+   - **Doğalgaz patlaması:** patlama flaşı, ateş topu, yerde şok dalgası halkası, güçlü kamera sarsıntısı, ardından yangın.
+   - **Sel:** binanın çevresinde yükselen yarı saydam su, su sıçraması, yağmur.
+   - **Yağma:** binanın önündeki sokakta (en yakın asfalt) yanan barikat, çatıda yanıp sönen kırmızı alarm ışığı ve halesi.
+3. **Yeni rozetler:** gaz (turuncu, patlama ikonu), sel (mavi, dalga), yağma (mor, ünlem). Yağız'ın rozet çerçevesinden kodla türetildi.
+4. **Afet sesleri** (kodla üretilir; Ayarlar → Ses ile kısılır): deprem gürlemesi ve patlama (ani, her yerden duyulur), yangın çıtırtısı / yağmur / dükkan alarmı (sürekli, 3D — kamera yaklaştıkça artar).
+5. **Tepe lambaları:** görevdeki kara araçlarında kırmızı/mavi çakar, helikopterde kırmızı uçuş ışığı; araç üsse dönünce söner.
+6. **Türkçe / İngilizce:** Ayarlar → Language artık çalışıyor. HUD, çağrı kartı, Kaza Dosyası (başlık, notlar, Türkçe sokak adlarıyla adres, olası ekipler), ayarlar, karne, rozet yazıları ve ipuçları çevriliyor; dosya açıkken dil değişirse anında yenilenir. Test sonrası editör dili İngilizce'ye geri alındı.
+7. **İpucu bandı (alt orta):** ilk kez oynayana adım adım yol gösterir (çağrıyı aç → rozete tıkla → ekip seç ve gönder → ekip çalışması); oyuncu adımı yapınca ilerler, sonunda kaybolur.
+8. **Windows build denendi:** `Build Finished, Result: Success`. URP partikül ve sprite shader'ları, efekt materyalleri, rozet materyali ve Türkçe karakterli font build'de doğrulandı. (Build repoya değil geçici klasöre alındı; exe çalıştırılmadı.)
+
+## 🐞 Bu Turda Bulunup Düzeltilen
+- Duman gece haritasında koyu zemine karışıyordu → ateşle aydınlanmış açık gri yapıldı, parçacık dokusu dolgunlaştırıldı.
+- Alevler sadece çatıdaydı ve rozetin arkasında kalıyordu → binanın üst yarısına yayıldı.
+- Yağma barikatı komşu binanın içinde kalıyordu → en yakın sokağa taşındı.
+- Vardiya paneli Kaza Dosyasının üstünde çiziliyordu → alta alındı.
+- Kullanıcı Play'deyken yapılan derleme oyunu bozdu ("script eksik" uyarıları) → Play durdurulup temiz kuruldu; bundan sonra derlemeden önce Play durduruluyor.
+
+## ⚠️ Bilinmesi Gerekenler
+- MCP ekran görüntüleri soluk çıkıyor; efektlerin gerçek gece sahnesindeki görünümünü bir kez gözle kontrol edin.
+- Piksel fontta "İ" harfi küçük "i" gibi görünüyor (fontun kendisi).
+- Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, sesler (çağrı + afet sesleri).

@@ -75,6 +75,7 @@ Bu proje, 48 saatlik Game Jam süresinde insan-yapay zeka ortaklığı (Pair Pro
 * **Kullanılan Araç (2):** Claude Code (Anthropic) — Unity MCP bağlantısı ile
 * **Kullanım Amacı:** Gelen çağrı, harita olay rozetleri ve Kaza Dosyası sistemlerinin kodlanması; sahneye tek tıkla kurulum; mevcut araç konvoyuna sevk API'si eklenmesi ve test sırasında bulunan hataların (ambulans eşleştirme, konvoy kilitlenmesi) düzeltilmesi; Play Mode testleri; `progress.md` ve README güncellemesi.
 * **Kullanım Yeri:** `GAME_JAM/Assets/Scripts/Phase2_Dispatch/Calls/` (tüm dosyalar), `Editor/CallSystemSceneBuilder.cs`; değişiklikler: `Units/AStarMovementTester.cs`, `UI/DispatchHUD.cs`, `Core/TacticalCameraController.cs`, `Assets/Scenes/SampleScene.unity`, `Assets/Prefabs/Calls/`.
+* **Sonraki eklemeler (Claude Code):** afet çeşitliliği ve efektleri (`Calls/DisasterFx.cs`, `BuildingShaker.cs`, `CameraShake.cs`, `DisasterFxLibrary.cs`), kodla üretilen sesler (`Calls/ProceduralCallAudio.cs`), tepe lambaları (`Units/EmergencyLightBar.cs`), vardiya sayacı ve karne (`Calls/ShiftClock.cs`), ayarlar paneli kurulumu (`UI/VolumeBlockBar.cs`, `UI/SettingsUI.cs` küçük değişiklik), Türkçe/İngilizce dil desteği (`Calls/Loc.cs`, `Calls/LocalizedText.cs`), ipuçları (`Calls/TutorialHints.cs`), filo ve takılma kurtarıcısı (`Units/AStarMovementTester.cs`). Gaz / sel / yağma rozetleri Yağız'ın `marker_collapse.png` görselinden kodla türetildi (`Assets/Prefabs/Calls/Markers/`).
 
 ---
 

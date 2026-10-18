@@ -141,6 +141,7 @@ namespace ZeroHour.Phase2.Editor
             SettingsUI settings = BuildSettings(canvasObj.transform);
             ShiftClock shiftClock = GetOrAdd<ShiftClock>(systemObj);
             BuildShiftHud(canvasObj.transform, shiftClock, settings);
+            BuildTutorialHints(canvasObj.transform);
             BuildDebrief(canvasObj.transform, shiftClock);
             settings.transform.SetAsLastSibling(); // Ayarlar her şeyin üstünde
             LocalizeStaticTexts(canvasObj.transform);
@@ -1113,6 +1114,40 @@ namespace ZeroHour.Phase2.Editor
             so.FindProperty("shiftDurationSeconds").floatValue = 180f;
             so.FindProperty("timeLeftText").objectReferenceValue = timeLeft;
             so.FindProperty("clockText").objectReferenceValue = clockText;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // ==========================================
+        // İPUCU BANDI (alt orta; Kaza Dosyasını örtmez)
+        // ==========================================
+
+        private static void BuildTutorialHints(Transform canvas)
+        {
+            Image bg = NewImage("TutorialHints", canvas, null, new Color(0.08f, 0.09f, 0.1f, 0.88f));
+            bg.raycastTarget = false;
+            Outline border = bg.gameObject.AddComponent<Outline>();
+            border.effectColor = new Color(HudGreen.r, HudGreen.g, HudGreen.b, 0.6f);
+            border.effectDistance = new Vector2(1.5f, -1.5f);
+            RectTransform rt = bg.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.sizeDelta = new Vector2(1000f, 50f);
+            rt.anchoredPosition = new Vector2(80f, 10f); // Sol alttaki çağrı kartından uzak dursun
+
+            CanvasGroup group = bg.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            TextMeshProUGUI text = NewText("Hint", rt, "", readFont, 26, HudLabel, 0, 0, 1000, 50, TextAlignmentOptions.Center);
+            text.enableAutoSizing = true;
+            text.fontSizeMax = 26f;
+            text.fontSizeMin = 16f;
+
+            TutorialHints hints = bg.gameObject.AddComponent<TutorialHints>();
+            SerializedObject so = new SerializedObject(hints);
+            so.FindProperty("banner").objectReferenceValue = group;
+            so.FindProperty("hintText").objectReferenceValue = text;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
