@@ -1,9 +1,16 @@
 # 🏢 SIGN (Disaster Control Line)
 
 ## 📌 Oyun Hakkında
-**SIGN**, iki ana fazdan oluşan, bürokrasi simülasyonu ile kriz ve kaynak yönetimini birleştiren gerilim dolu bir oyundur. Oyuncular, Yapı Denetim ve Kriz Masası Memuru **Deniz** rolünü üstlenirler. 
+**SIGN**, iki ana fazdan oluşan, bürokrasi simülasyonu ile kriz ve kaynak yönetimini birleştiren gerilim dolu bir oyundur. 
 
 Gündüz vardiyasında masa başında binaların denetim dosyalarını inceleyip **APPROVE** (Onay) veya **REJECT** (Red) kararları verirken; gece vardiyasında ise "Damage Control Line" kriz masasına geçerek şehirde patlak veren afetlere karşı kısıtlı acil durum birimlerini yönetirler. Gündüz alınan bürokratik kararların ve rüşvet/ihmal tercihlerinin sonuçları, gece şehirdeki yıkım ve can kaybı miktarı olarak doğrudan oyuncunun karşısına çıkar.
+
+---
+
+## 🎬 Hikaye ve Motivasyon (Trailer & Arka Plan)
+Oyunda yönettiğimiz ana karakter **Deniz** (Yapı Denetim ve Kriz Masası Memuru), geçmişte yaşanan yıkıcı bir depremde ailesini kaybetmiştir. Başka insanların da aynı acıyı, çaresizliği ve hüznü yaşamaması için kendisini afet yönetimi ve yapı denetiminde kusursuz bir çalışan olmaya adamıştır. 
+
+Deniz'in masasında duran çerçeveli aile fotoğrafı, alınan her bürokratik kararın arkasındaki vicdani ve duygusal ağırlığı oyuncuya sürekli hatırlatır.
 
 ---
 
@@ -36,6 +43,26 @@ Gündüz vardiyasında masa başında binaların denetim dosyalarını inceleyip
 | **Helikopter `[+]` → Rol Bölmesi** | Her helikopter için ambulans / polis / itfaiye logosundan birini seçme (joker birim olarak atama) |
 | **Sol Üst Dişli / ESC** | Ayarlar menüsü (ses, müzik, dil, tam ekran); açıkken oyun durur |
 | **Sol Üst Sayaç** | Vardiyanın kalan süresi (3:00) ve oyun saati (02:00 → 05:00). Süre bitince karne açılır |
+
+---
+
+## 🔄 Oynanış Akışı (Gameplay Loop)
+
+1. **Ana Menü:** Oyuna `START SHIFT` butonu ile başlanır. Ayarlar menüsünden ses, müzik, dil (EN/TR) ve tam ekran tercihleri ayarlanabilir.
+2. **Uyanma:** Oyuncu kanepede uyanır, sol üstteki görev kutusu (`TASKS`) adım adım yapılması gerekenleri gösterir.
+3. **Mesai Başlangıcı:** Bilgisayarın başındaki sandalyede `E` tuşuna basıldığında mesai 08:00'de başlar (08:00–17:00 mesaisi gerçek zamanda yaklaşık 2 dakika sürer).
+4. **Dosya İnceleme (Faz 1):** BIA OS (Windows 7 temalı masaüstü) üzerinde `Case Files` ve `Rule Book` klasörleri açılır.
+   * Her dosyada yer alan 8 alan ve **X-RAY** taraması kural kitabındaki şartlara göre doğrulanır. Bütün kontroller bitmeden karar butonları aktif olmaz.
+   * Dosyadaki alan adına tıklamak, kural kitabında doğrudan ilgili sayfayı açar.
+   * Karar aşamasında onay ya da ret verilir; ret durumunda çiğnenen tüm kurallar ret formunda işaretlenir.
+   * Doğru karar verilirse **+$200**, yanlış karar verilirse **-$100** bütçe etkisi yansır.
+5. **Mesai Sonu:** Saat 17:00'de zil çalar, oyuncu sandalyeden kalkıp kapıya yürür ve `E` tuşuna basarak gece vardiyasına geçer.
+6. **Gece Vardiyası (Faz 2):** Gece brifingi (daktilo efekti) ile başlar; vardiya 02:00 – 05:00 saatleri arasında sürer (gerçek zamanda yaklaşık 3 dakika).
+   * Sol alttan gelen çağrı kabul edilir (3 saniye dinlenir) ya da reddedilir (reddedilirse 5 sivil kaybedilir).
+   * Kabul edilen çağrının konumunda haritada bir olay rozeti belirir; rozete tıklandığında Kaza Dosyası açılır.
+   * Dosyadan sevk edilecek birimler seçilip onaylanır. Araçlar istasyondan çıkar, olay yerine gidip müdahale eder ve üsse geri döner.
+   * Şehir genelinde toplam 150 sivil bulunmaktadır; anlık hayatta kalma oranı üstteki HUD sayacından takip edilebilir.
+   * Vardiya sonunda performans karnesi görüntülenir, `PLAY AGAIN` butonu ile yeniden başlanabilir.
 
 ---
 
