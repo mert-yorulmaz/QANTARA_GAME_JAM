@@ -37,6 +37,8 @@ namespace ZeroHour.Phase2.Calls
             public TMP_Text text;
             public TMP_Text time;
             public string key;
+            public string englishFormat;
+            public object[] args;
             public float age;
         }
 
@@ -64,21 +66,52 @@ namespace ZeroHour.Phase2.Calls
             if (Instance == this) Instance = null;
         }
 
-        /// <summary>Telefona mesaj düşürür. Aynı anahtarlı mesaj en alttaysa yenisi onun yerine yazılır (örn. artan kayıp sayısı).</summary>
-        public static void Post(string message, FeedTone tone, string key = null)
+        private void OnEnable()
         {
-            if (Instance != null) Instance.Add(message, tone, key);
+            Loc.Changed += RelocalizeAll;
         }
 
-        private void Add(string message, FeedTone tone, string key)
+        private void OnDisable()
+        {
+            Loc.Changed -= RelocalizeAll;
+        }
+
+        /// <summary>
+        /// Telefona mesaj düşürür. Aynı anahtarlı mesaj en alttaysa yenisi onun yerine yazılır (örn. artan kayıp sayısı).
+        /// Metin İngilizce kalıp + değerler olarak saklanır; dil değişince tüm mesajlar yeni dilde yeniden yazılır.
+        /// Değerlerden metin olanlar (ör. ekip adı) da çevrilir.
+        /// </summary>
+        public static void Post(FeedTone tone, string key, string englishFormat, params object[] args)
+        {
+            if (Instance != null) Instance.Add(tone, key, englishFormat, args);
+        }
+
+        private static string Render(string englishFormat, object[] args)
+        {
+            object[] localized = new object[args.Length];
+            for (int i = 0; i < args.Length; i++) localized[i] = args[i] is string s ? Loc.T(s) : args[i];
+            return Loc.F(englishFormat, localized);
+        }
+
+        private void RelocalizeAll()
+        {
+            foreach (Bubble b in bubbles) b.text.text = Render(b.englishFormat, b.args);
+            layoutDirty = true; // Türkçe metin daha uzun / kısa olabilir: balon yükseklikleri yeniden hesaplanır
+        }
+
+        private void Add(FeedTone tone, string key, string englishFormat, object[] args)
         {
             if (content == null) return;
+
+            string message = Render(englishFormat, args);
 
             string clock = IncidentBoard.Instance != null ? IncidentBoard.Instance.GetClockTime() : "";
             Bubble last = bubbles.Count > 0 ? bubbles[bubbles.Count - 1] : null;
             if (key != null && last != null && last.key == key)
             {
                 last.text.text = message;
+                last.englishFormat = englishFormat;
+                last.args = args;
                 last.time.text = clock;
                 last.age = 0f;
                 layoutDirty = true;
@@ -88,6 +121,8 @@ namespace ZeroHour.Phase2.Calls
 
             Bubble bubble = CreateBubble(message, ToneColor(tone), clock);
             bubble.key = key;
+            bubble.englishFormat = englishFormat;
+            bubble.args = args;
             bubbles.Add(bubble);
 
             while (bubbles.Count > maxMessages)

@@ -404,17 +404,18 @@ namespace ZeroHour.Phase2.Calls
         private static void Feed(IncidentReport r, FeedTone tone, string key, string englishFormat, params object[] args)
         {
             if (r.sentUnits.Count == 0) return;
-            PhoneFeed.Post(Loc.F(englishFormat, args), tone, key);
+            PhoneFeed.Post(tone, key, englishFormat, args);
         }
 
+        /// <summary>Ekip adı İngilizce anahtar olarak; telefon gösterirken seçili dile çevirir.</summary>
         private static string UnitName(UnitType type)
         {
             switch (type)
             {
-                case UnitType.FireEngine: return Loc.T("Fire Truck");
-                case UnitType.PoliceCruiser: return Loc.T("Police");
-                case UnitType.RescueHelicopter: return Loc.T("Helicopter");
-                default: return Loc.T("Ambulance");
+                case UnitType.FireEngine: return "Fire Truck";
+                case UnitType.PoliceCruiser: return "Police";
+                case UnitType.RescueHelicopter: return "Helicopter";
+                default: return "Ambulance";
             }
         }
 

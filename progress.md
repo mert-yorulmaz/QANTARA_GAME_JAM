@@ -557,3 +557,16 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Telefon artık **sadece ekip sevk edilmiş vakaların** gelişmelerini yazıyor: ilk ekip olay yerinde, yağma doğrulandı, asılsız ihbar, helikopterin yakıtı bitti, kayıplar (aynı balonda güncellenir), çözüldü (kurtarılan / kayıp), yanlış ekip, süre doldu.
 - Kaldırılan mesajlar: yeni vaka (yaralı sayısı dosyayı açmadan görünüyordu), takip ihbarı geldi, sevk edildi, vaka kapatıldı, reddedilen / cevapsız çağrı. Bunları oyuncu zaten kendisi yapıyor ya da dosyayı açınca görmeli.
 - *Test:* 3 vaka (biri sevk edildi): sevk edilmeyen iki vakada kayıplar oldu ama telefona yazılmadı; sevk edilen vaka için yalnızca "ilk ekip olay yerinde" ve "çözüldü · 4 kurtarıldı, 0 kayıp" geldi. Konsolda hata yok.
+
+---
+
+# 🔄 GÜNCELLEME 9.2 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 9.2"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+
+## ✅ Yapılanlar
+- **Ayarlar, %100'de sıkışıklık:** "100%" yazısı son bloğun üstüne biniyordu. Blok çubuğu sola alındı, yüzde yazısının kutusu genişletildi.
+- **Ayarlarda Türkçe taşmalar:** "KAPALI" ve "VARSAYILAN" kutularının kenarına değiyordu; bu etiketler artık kutuya sığana kadar küçülüyor (İngilizce boyut değişmedi).
+- **Telefon mesajları dile göre dinamik:** Mesajlar İngilizce kalıp + değerler olarak saklanıyor; oyun içinde dil değişince ekrandaki tüm mesajlar (ekip adları dahil, ör. Ambulans ↔ Ambulance) anında yeni dilde yeniden yazılıyor, balon yükseklikleri yeniden hesaplanıyor.
+- *Test:* Yanlış ekip sevk edilen vaka → 3 mesaj; dil EN ↔ TR değiştirildi, hepsi doğru çevrildi. Ayarlar paneli iki dilde %100'de görüntülendi. Konsolda hata yok. Kayıtlı dil tercihi (Türkçe) testten sonra geri kondu.

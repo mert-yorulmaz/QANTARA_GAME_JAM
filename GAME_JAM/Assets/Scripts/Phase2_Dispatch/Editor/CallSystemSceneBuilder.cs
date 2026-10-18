@@ -1440,23 +1440,23 @@ namespace ZeroHour.Phase2.Editor
             TMP_Text languageText = NewText("Language", panel, "ENGLISH", pixelFont, 44, Color.white, 702, 450, 1006, 518, TextAlignmentOptions.Center);
 
             // Tam ekran OFF / ON: seçili tarafın dolgusu (toggle_selected_half) SettingsUI tarafından açılıp kapanır
-            NewText("OffIdle", panel, "OFF", pixelFont, 40, ToggleTextIdle, 788, 587, 932, 658, TextAlignmentOptions.Center);
-            NewText("OnIdle", panel, "ON", pixelFont, 40, ToggleTextIdle, 932, 587, 1076, 658, TextAlignmentOptions.Center);
+            FitInBox(NewText("OffIdle", panel, "OFF", pixelFont, 40, ToggleTextIdle, 788, 587, 932, 658, TextAlignmentOptions.Center));
+            FitInBox(NewText("OnIdle", panel, "ON", pixelFont, 40, ToggleTextIdle, 932, 587, 1076, 658, TextAlignmentOptions.Center));
             Image offHighlight = NewImage("OffSelected", panel, toggleHalf, Color.white);
             Place(offHighlight.rectTransform, 788, 586, 932, 660);
             offHighlight.raycastTarget = false;
-            NewText("Label", offHighlight.transform, "OFF", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center);
+            FitInBox(NewText("Label", offHighlight.transform, "OFF", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center));
             Image onHighlight = NewImage("OnSelected", panel, toggleHalf, Color.white);
             Place(onHighlight.rectTransform, 932, 586, 1076, 660);
             onHighlight.raycastTarget = false;
-            NewText("Label", onHighlight.transform, "ON", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center);
+            FitInBox(NewText("Label", onHighlight.transform, "ON", pixelFont, 40, AcceptInk, 0, 0, 144, 74, TextAlignmentOptions.Center));
             Button offButton = NewButton("FullscreenOff", panel, 788, 587, 932, 658);
             Button onButton = NewButton("FullscreenOn", panel, 932, 587, 1076, 658);
 
             Button defaults = NewButton("DefaultsButton", panel, 42, 728, 342, 816);
-            NewText("Label", defaults.transform, "DEFAULTS", pixelFont, 40, HudLabel, 0, 0, 300, 88, TextAlignmentOptions.Center);
+            FitInBox(NewText("Label", defaults.transform, "DEFAULTS", pixelFont, 40, HudLabel, 0, 0, 300, 88, TextAlignmentOptions.Center));
             Button back = NewButton("BackButton", panel, 850, 728, 1078, 816);
-            NewText("Label", back.transform, "BACK", pixelFont, 40, AcceptInk, 0, 0, 228, 88, TextAlignmentOptions.Center);
+            FitInBox(NewText("Label", back.transform, "BACK", pixelFont, 40, AcceptInk, 0, 0, 228, 88, TextAlignmentOptions.Center));
 
             SerializedObject so = new SerializedObject(settings);
             so.FindProperty("settingsPanelRoot").objectReferenceValue = root.gameObject;
@@ -1484,7 +1484,7 @@ namespace ZeroHour.Phase2.Editor
         {
             const int BlockCount = 10;
             const float BlockWidth = 32f, BlockGap = 6f, BlockHeight = 50f;
-            float x0 = 548f;
+            float x0 = 500f; // "100%" yazısına yer kalsın (çubuk 874'te biter)
             float width = BlockCount * BlockWidth + (BlockCount - 1) * BlockGap;
 
             // Görünmez Slider: tıklama / sürükleme alanı blok çubuğunun tamamı
@@ -1528,7 +1528,7 @@ namespace ZeroHour.Phase2.Editor
             so.FindProperty("emptySprite").objectReferenceValue = empty;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            TMP_Text percent = NewText($"{name}Percent", panel, "70%", pixelFont, 44, Color.white, 940, rowY - 30, 1078, rowY + 30, TextAlignmentOptions.Right);
+            TMP_Text percent = NewText($"{name}Percent", panel, "70%", pixelFont, 44, Color.white, 896, rowY - 30, 1078, rowY + 30, TextAlignmentOptions.Right);
             return (slider, percent);
         }
 
@@ -1594,6 +1594,16 @@ namespace ZeroHour.Phase2.Editor
             tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.raycastTarget = false;
+            return tmp;
+        }
+
+        /// <summary>Türkçe metin daha uzun olabilir ("KAPALI", "VARSAYILAN"): kenarlara değmeden sığana kadar küçülür.</summary>
+        private static TMP_Text FitInBox(TMP_Text tmp)
+        {
+            tmp.enableAutoSizing = true;
+            tmp.fontSizeMax = tmp.fontSize;
+            tmp.fontSizeMin = Mathf.Min(24f, tmp.fontSize);
+            tmp.margin = new Vector4(12f, 0f, 12f, 0f);
             return tmp;
         }
 
