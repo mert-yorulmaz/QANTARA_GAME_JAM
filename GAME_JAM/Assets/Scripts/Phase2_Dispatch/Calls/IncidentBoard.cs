@@ -32,11 +32,30 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private float floodWeight = 15f;
         [SerializeField] private float unrestWeight = 15f;
 
-        [Header("Olay Kuralları")]
-        [Tooltip("Ekip gönderilmezse bu süre sonunda yaralılar kaybedilir ve rozet kalkar (sn)")]
-        [SerializeField] private float unattendedTimeout = 45f;
-        [Tooltip("Ekip yola çıktıktan sonra bu süre içinde varamazsa olay yine de kapanır (rozet takılı kalmasın)")]
-        [SerializeField] private float respondingTimeout = 90f;
+        [Header("Süre (çember): olay bu sürede çözülmezse kalan yaralılar kaybedilir (sn)")]
+        [SerializeField] private float fireTimeLimit = 75f;
+        [SerializeField] private float collapseTimeLimit = 90f;
+        [SerializeField] private float gasTimeLimit = 70f;
+        [SerializeField] private float floodTimeLimit = 85f;
+        [SerializeField] private float unrestTimeLimit = 60f;
+
+        [Header("Zamanla Kayıp")]
+        [Tooltip("Yardım yokken yaralı başına saniyelik ölüm oranı (tam seviyede; 6 yaralı ≈ 8 sn'de bir kayıp)")]
+        [SerializeField] private float deathRatePerInjured = 0.02f;
+        [Tooltip("İlk bu kadar saniye kimse ölmez (altın dakikalar)")]
+        [SerializeField] private float deathGraceSeconds = 5f;
+        [Tooltip("Ölüm riski bu sürede sıfırdan tam seviyeye çıkar: hızlı müdahale ödüllendirilir")]
+        [SerializeField] private float deathRampSeconds = 25f;
+        [Tooltip("Olay yerinde işe yarayan ekip varken ölüm oranı çarpanı")]
+        [SerializeField] private float helpedDeathMultiplier = 0.3f;
+        [Tooltip("Olay yerinde helikopter varken ölüm oranı çarpanı (hızlı ilk müdahale)")]
+        [SerializeField] private float helicopterDeathMultiplier = 0.1f;
+
+        [Header("Helikopter (hızlı ilk müdahaleci)")]
+        [Tooltip("Helikopterin olay yerinde kalabildiği süre (su / yakıt); sonra üsse döner")]
+        [SerializeField] private float helicopterEnduranceSeconds = 14f;
+        [Tooltip("Yangında itfaiye rolündeki helikopterin (su bombası) iş katkısı çarpanı")]
+        [SerializeField] private float helicopterWaterBombBonus = 1.5f;
 
         [Header("Olay Yerinde İş Süresi (1 gerekli ekiple, sn)")]
         [Tooltip("Aynı işi yapan her ek araç işi hızlandırır: 3 itfaiye = 3 kat hızlı")]
@@ -214,8 +233,9 @@ namespace ZeroHour.Phase2.Calls
                 injured = injured,
                 affected = injured + UnityEngine.Random.Range(2, 7),
                 urgent = injured >= 5,
-                timeRemaining = unattendedTimeout,
-                timeLimit = unattendedTimeout,
+                timeRemaining = TimeLimitFor(kind),
+                timeLimit = TimeLimitFor(kind),
+                injuredRemaining = injured,
                 workRequired = WorkSecondsFor(kind)
             };
 
@@ -324,6 +344,18 @@ namespace ZeroHour.Phase2.Calls
             return pool[UnityEngine.Random.Range(0, pool.Length)];
         }
 
+        private float TimeLimitFor(CallIncidentKind kind)
+        {
+            switch (kind)
+            {
+                case CallIncidentKind.Fire: return fireTimeLimit;
+                case CallIncidentKind.Collapse: return collapseTimeLimit;
+                case CallIncidentKind.GasExplosion: return gasTimeLimit;
+                case CallIncidentKind.Flood: return floodTimeLimit;
+                default: return unrestTimeLimit;
+            }
+        }
+
         private float WorkSecondsFor(CallIncidentKind kind)
         {
             switch (kind)
@@ -363,11 +395,9 @@ namespace ZeroHour.Phase2.Calls
         private Transform PickFreeBuilding()
         {
             List<Transform> free = new List<Transform>();
-            AStarMovementTester fleet = AStarMovementTester.Instance;
             foreach (Transform b in candidateBuildings)
             {
                 if (b == null) continue;
-                if (fleet != null && fleet.IsHeliRoof(b)) continue; // Çatısında helikopter park eden bina
                 bool used = false;
                 foreach (IncidentReport r in activeIncidents)
                 {
@@ -399,41 +429,106 @@ namespace ZeroHour.Phase2.Calls
 
         private void Update()
         {
+            float dt = Time.deltaTime;
             for (int i = activeIncidents.Count - 1; i >= 0; i--)
             {
                 IncidentReport r = activeIncidents[i];
+                if (r.status == CallIncidentStatus.Closed) continue;
 
-                if (r.status == CallIncidentStatus.Responding)
+                // Süre (çember) olay kapanana kadar işler: bekleme + yol + iş hepsi bu süreye sığmalı
+                r.elapsed += dt;
+                r.timeRemaining = Mathf.Max(0f, r.timeLimit - r.elapsed);
+
+                ExpireHelicopters(r);
+
+                // İş: olay yerindeki ekiplerin katkı toplamı (3 itfaiye = 3 kat hızlı)
+                r.currentWorkRate = CurrentWorkRate(r);
+                if (r.currentWorkRate > 0f)
                 {
-                    // Güvence: ekip yolda takılırsa rozet sonsuza kadar kalmasın
-                    r.respondingTime += Time.deltaTime;
-                    if (r.respondingTime >= respondingTimeout) ResolveIncident(r);
-                    continue;
+                    r.workDone += dt * r.currentWorkRate;
+                    if (r.workDone >= r.workRequired)
+                    {
+                        ResolveIncident(r);
+                        continue;
+                    }
                 }
 
-                if (r.status == CallIncidentStatus.Working)
+                // Zamanla kayıp: yardım gelene kadar yaralılar ölebilir
+                ApplyDeaths(r, dt);
+                if (r.injuredRemaining <= 0)
                 {
-                    // İş hızı = olay yerindeki ekiplerin katkı toplamı (3 itfaiye = 3 kat hızlı)
-                    float rate = 0f;
-                    foreach (UnitType role in r.onSiteRoles) rate += r.RoleWeight(role);
-                    r.currentWorkRate = Mathf.Max(minimumWorkRate, rate);
-                    r.workDone += Time.deltaTime * r.currentWorkRate;
-                    if (r.workDone >= r.workRequired) ResolveIncident(r);
-                    continue;
-                }
-                if (r.status != CallIncidentStatus.Waiting) continue;
-
-                r.timeRemaining -= Time.deltaTime;
-                if (r.timeRemaining <= 0f)
-                {
-                    // Ekip gönderilmedi: yaralılar kaybedildi
-                    if (CityStatsManager.Instance != null) CityStatsManager.Instance.RegisterCasualty(r.injured);
-                    Debug.Log($"<color=red>[Incidents] ⏱️ Case #{r.caseNumber} zamanında müdahale görmedi. {r.injured} sivil kaybedildi.</color>");
+                    Debug.Log($"<color=red>[Incidents] ☠️ Case #{r.caseNumber}: kurtarılacak kimse kalmadı ({r.deaths} kayıp).</color>");
                     CloseIncident(r);
+                    continue;
                 }
+
+                if (r.timeRemaining <= 0f) FailIncident(r);
             }
 
             HandleMarkerClick();
+        }
+
+        /// <summary>Bir aracın işe katkısı: gerekli ekip 1, yardımcı 0.5; yangında su bombası atan helikopter 1.5.</summary>
+        private float UnitWeight(IncidentReport r, OnSiteUnit unit)
+        {
+            if (unit.isHelicopter && r.HelicopterActsAsItself) return 1f; // Selde çatıdan tahliye
+            float w = r.RoleWeight(unit.role);
+            bool waterBomb = unit.isHelicopter && unit.role == UnitType.FireEngine &&
+                             (r.kind == CallIncidentKind.Fire || r.kind == CallIncidentKind.GasExplosion);
+            return waterBomb ? w * helicopterWaterBombBonus : w;
+        }
+
+        private float CurrentWorkRate(IncidentReport r)
+        {
+            if (r.onSiteUnits.Count == 0) return 0f;
+            float rate = 0f;
+            foreach (OnSiteUnit unit in r.onSiteUnits) rate += UnitWeight(r, unit);
+            return rate > 0f ? rate : minimumWorkRate;
+        }
+
+        private void ApplyDeaths(IncidentReport r, float dt)
+        {
+            if (r.injuredRemaining <= 0 || dt <= 0f) return;
+
+            float multiplier = 1f;
+            foreach (OnSiteUnit unit in r.onSiteUnits)
+            {
+                if (unit.isHelicopter) { multiplier = helicopterDeathMultiplier; break; }
+                if (UnitWeight(r, unit) > 0f) multiplier = helpedDeathMultiplier;
+            }
+
+            // Risk zamanla artar: ilk saniyeler güvenli, geç kalındıkça kayıplar hızlanır
+            float ramp = Mathf.Clamp01((r.elapsed - deathGraceSeconds) / Mathf.Max(1f, deathRampSeconds));
+            float lambda = deathRatePerInjured * r.injuredRemaining * multiplier * ramp;
+            if (UnityEngine.Random.value < 1f - Mathf.Exp(-lambda * dt))
+            {
+                r.injuredRemaining--;
+                r.deaths++;
+                if (CityStatsManager.Instance != null) CityStatsManager.Instance.RegisterCasualty(1);
+            }
+        }
+
+        /// <summary>Helikopterin suyu / yakıtı sınırlı: olay yerinde süresi dolunca tek başına üsse döner.</summary>
+        private void ExpireHelicopters(IncidentReport r)
+        {
+            for (int i = r.onSiteUnits.Count - 1; i >= 0; i--)
+            {
+                OnSiteUnit unit = r.onSiteUnits[i];
+                if (!unit.isHelicopter || r.elapsed - unit.arrivedAtElapsed < helicopterEnduranceSeconds) continue;
+
+                if (AStarMovementTester.Instance != null && unit.vehicle != null) AStarMovementTester.Instance.ReleaseVehicle(unit.vehicle);
+                r.onSiteUnits.RemoveAt(i);
+            }
+        }
+
+        private void FailIncident(IncidentReport r)
+        {
+            int lost = r.injuredRemaining;
+            r.injuredRemaining = 0;
+            r.deaths += lost;
+            if (CityStatsManager.Instance != null && lost > 0) CityStatsManager.Instance.RegisterCasualty(lost);
+            Debug.Log($"<color=red>[Incidents] ⏱️ Case #{r.caseNumber}: süre doldu. Toplam {r.deaths} kayıp.</color>");
+            CloseIncident(r);
         }
 
         private void HandleMarkerClick()
@@ -483,31 +578,35 @@ namespace ZeroHour.Phase2.Calls
         /// <param name="heliRoles">Her helikopterin rolü (ambulans / polis / itfaiye). Boşsa helikopter gerekli ekip rolünü alır.</param>
         public int Dispatch(IncidentReport report, IList<UnitType> units, IList<UnitType> heliRoles)
         {
-            if (report == null || report.status != CallIncidentStatus.Waiting) return 0;
+            // Takviye serbest: olay kapanana kadar (örn. önce helikopter, sonra itfaiye) ekip gönderilebilir
+            if (report == null || report.status == CallIncidentStatus.Closed) return 0;
             if (AStarMovementTester.Instance == null || units.Count == 0) return 0;
 
-            int sent = AStarMovementTester.Instance.DispatchVehicles(report.sitePosition, units);
+            List<GameObject> vehicles = new List<GameObject>();
+            int sent = AStarMovementTester.Instance.DispatchVehicles(report.sitePosition, units, vehicles);
             if (sent <= 0) return 0;
 
-            report.status = CallIncidentStatus.Responding;
-            report.sentUnits.AddRange(units);
+            if (report.status == CallIncidentStatus.Waiting) report.status = CallIncidentStatus.Responding;
 
+            // Gerçekten yola çıkan her aracın rolü (helikopter: seçilen rol; selde kendisi)
             int heliIndex = 0;
-            foreach (UnitType unit in units)
+            foreach (GameObject vehicle in vehicles)
             {
-                if (unit != UnitType.RescueHelicopter)
+                UnitType type = AStarMovementTester.Instance.GetUnitType(vehicle);
+                report.sentUnits.Add(type);
+                if (type != UnitType.RescueHelicopter)
                 {
-                    report.sentRoles.Add(unit);
+                    report.sentRoles.Add(type);
                     continue;
                 }
 
                 UnitType role = (heliRoles != null && heliIndex < heliRoles.Count) ? heliRoles[heliIndex] : report.RequiredUnit;
                 if (report.HelicopterActsAsItself) role = UnitType.RescueHelicopter; // Selde helikopter çatıdan tahliye yapar
-                report.heliRoles.Add(role);
+                report.heliRoleByVehicle[vehicle] = role;
                 report.sentRoles.Add(role);
                 heliIndex++;
             }
-            if (report.marker != null) report.marker.SetResponding();
+            if (report.marker != null && report.onSiteUnits.Count == 0) report.marker.SetResponding();
 
             Debug.Log($"<color=cyan>[Incidents] 🚨 Case #{report.caseNumber}: {sent} birim sevk edildi.</color>");
             return sent;
@@ -518,11 +617,13 @@ namespace ZeroHour.Phase2.Calls
         {
             if (report == null || report.status != CallIncidentStatus.Waiting) return;
 
-            if (CityStatsManager.Instance != null) CityStatsManager.Instance.OnCallDismissed(report.injured);
+            if (CityStatsManager.Instance != null && report.injuredRemaining > 0) CityStatsManager.Instance.OnCallDismissed(report.injuredRemaining);
+            report.deaths += report.injuredRemaining;
+            report.injuredRemaining = 0;
             CloseIncident(report);
         }
 
-        private void HandleVehicleArrived(UnitType type, Vector3 siteTarget)
+        private void HandleVehicleArrived(UnitType type, Vector3 siteTarget, GameObject vehicle)
         {
             foreach (IncidentReport r in activeIncidents)
             {
@@ -533,11 +634,17 @@ namespace ZeroHour.Phase2.Calls
                 UnitType role = type;
                 if (type == UnitType.RescueHelicopter)
                 {
-                    role = r.helisArrived < r.heliRoles.Count ? r.heliRoles[r.helisArrived] : r.RequiredUnit;
-                    r.helisArrived++;
+                    role = vehicle != null && r.heliRoleByVehicle.TryGetValue(vehicle, out UnitType chosen) ? chosen : r.RequiredUnit;
+                    if (r.HelicopterActsAsItself) role = UnitType.RescueHelicopter;
                 }
 
-                r.onSiteRoles.Add(role);
+                r.onSiteUnits.Add(new OnSiteUnit
+                {
+                    vehicle = vehicle,
+                    role = role,
+                    isHelicopter = type == UnitType.RescueHelicopter,
+                    arrivedAtElapsed = r.elapsed
+                });
                 r.status = CallIncidentStatus.Working;
                 return;
             }
@@ -547,23 +654,26 @@ namespace ZeroHour.Phase2.Calls
         {
             CityStatsManager stats = CityStatsManager.Instance;
 
+            int remaining = report.injuredRemaining;
             if (report.sentRoles.Contains(report.RequiredUnit))
             {
-                // Doğru ekip: herkes kurtarıldı
-                if (stats != null) stats.ResolveCiviliansAtRisk(report.injured);
-                Debug.Log($"<color=green>[Incidents] ✅ Case #{report.caseNumber} çözüldü. {report.injured} sivil kurtarıldı.</color>");
+                // Doğru ekip, süre bitmeden: hayatta kalan yaralıların hepsi kurtarıldı
+                if (stats != null) stats.ResolveCiviliansAtRisk(remaining);
+                Debug.Log($"<color=green>[Incidents] ✅ Case #{report.caseNumber} çözüldü. {remaining} sivil kurtarıldı, {report.deaths} kayıp.</color>");
             }
             else
             {
-                // Yanlış ekip: yaralıların yarısı kaybedilir
-                int lost = Mathf.CeilToInt(report.injured / 2f);
+                // Gerekli ekip hiç gönderilmedi: kalan yaralıların yarısı kaybedilir
+                int lost = Mathf.CeilToInt(remaining / 2f);
+                report.deaths += lost;
                 if (stats != null)
                 {
-                    stats.RegisterCasualty(lost);
-                    stats.ResolveCiviliansAtRisk(report.injured - lost);
+                    if (lost > 0) stats.RegisterCasualty(lost);
+                    stats.ResolveCiviliansAtRisk(remaining - lost);
                 }
-                Debug.Log($"<color=orange>[Incidents] ⚠️ Case #{report.caseNumber}: yanlış ekip ({report.RequiredUnit} gerekiyordu). {lost} sivil kaybedildi.</color>");
+                Debug.Log($"<color=orange>[Incidents] ⚠️ Case #{report.caseNumber}: gerekli ekip ({report.RequiredUnit}) gelmedi. {lost} sivil daha kaybedildi.</color>");
             }
+            report.injuredRemaining = 0;
 
             CloseIncident(report);
         }

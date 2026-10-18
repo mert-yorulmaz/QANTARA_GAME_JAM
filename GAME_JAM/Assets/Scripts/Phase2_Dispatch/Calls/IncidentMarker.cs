@@ -1,10 +1,13 @@
-using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace ZeroHour.Phase2.Calls
 {
     /// <summary>
     /// Olay binasının üstünde havada yüzen, kameraya bakan (billboard) ve tıklanabilen olay rozeti.
+    /// Çevresindeki çember:
+    ///  • Süre yayı (beyaz → kırmızı) saat yönünde azalır; bitince kalan yaralılar kaybedilir.
+    ///  • Ekip varınca aynı noktadan sarı iş yayı dolmaya başlar; süre bitmeden tam tur atarsa olay çözülür.
     /// Tıklama algılaması IncidentBoard'da New Input System ile yapılır.
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
@@ -20,16 +23,15 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private float bobAmplitude = 0.18f;
         [SerializeField] private float bobSpeed = 2.4f;
 
-        [Header("Aciliyet Nabzı")]
-        [Tooltip("Kalan süre bunun altına inince rozet nabız gibi atar")]
-        [SerializeField] private float urgentPulseBelowSeconds = 15f;
+        [Header("Çember")]
+        [SerializeField] private Image timeRing;
+        [SerializeField] private Image workRing;
+        [Tooltip("Kalan süre bu oranın altına inince rozet nabız gibi atar ve yay kırmızılaşır")]
+        [SerializeField] private float urgentFraction = 0.3f;
 
-        [Header("Geri Sayım (rozetin üstünde)")]
-        [SerializeField] private TMP_Text countdownText;
-
-        private static readonly Color CountdownNormal = Color.white;
-        private static readonly Color CountdownUrgent = new Color(1f, 0.32f, 0.25f);
-        private static readonly Color CountdownEnRoute = new Color(0.47f, 0.88f, 0.69f);
+        private static readonly Color TimeColor = new Color(0.95f, 0.95f, 0.95f, 0.95f);
+        private static readonly Color UrgentColor = new Color(1f, 0.25f, 0.2f, 1f);
+        private static readonly Color WorkColor = new Color(1f, 0.82f, 0.15f, 1f);
 
         private SpriteRenderer spriteRenderer;
         private float spriteWorldSize = 1f;
@@ -49,15 +51,16 @@ namespace ZeroHour.Phase2.Calls
             if (spriteWorldSize <= 0f) spriteWorldSize = 1f;
 
             SphereCollider col = GetComponent<SphereCollider>();
-            col.radius = spriteWorldSize * 0.55f;
+            col.radius = spriteWorldSize * 0.6f;
 
             bobOffset = Random.value * 10f;
             transform.position = report.markerAnchor;
+            UpdateRings();
         }
 
         public void SetResponding()
         {
-            if (spriteRenderer != null) spriteRenderer.color = new Color(1f, 1f, 1f, 0.55f);
+            if (spriteRenderer != null) spriteRenderer.color = new Color(1f, 1f, 1f, 0.8f);
         }
 
         private void LateUpdate()
@@ -74,11 +77,9 @@ namespace ZeroHour.Phase2.Calls
             float distance = Vector3.Distance(cam.transform.position, Report.markerAnchor);
             float worldSize = Mathf.Max(minWorldSize, distance * sizePerDistance);
 
+            float fraction = Report.timeLimit > 0f ? Report.timeRemaining / Report.timeLimit : 0f;
             float pulse = 1f;
-            if (Report.status == CallIncidentStatus.Waiting && Report.timeRemaining < urgentPulseBelowSeconds)
-            {
-                pulse = 1f + 0.18f * Mathf.Abs(Mathf.Sin(Time.time * 6f));
-            }
+            if (fraction < urgentFraction) pulse = 1f + 0.15f * Mathf.Abs(Mathf.Sin(Time.time * 6f));
 
             transform.localScale = Vector3.one * (worldSize / spriteWorldSize) * pulse;
 
@@ -87,33 +88,30 @@ namespace ZeroHour.Phase2.Calls
             float bob = Mathf.Sin((Time.time + bobOffset) * speed) * bobAmplitude * worldSize;
             transform.position = Report.markerAnchor + Vector3.up * (worldSize * 0.6f + bob);
 
-            UpdateCountdown();
+            if (Report.status == CallIncidentStatus.Working && spriteRenderer != null) spriteRenderer.color = Color.white;
+            UpdateRings();
         }
 
-        private void UpdateCountdown()
+        private void UpdateRings()
         {
-            if (countdownText == null) return;
+            if (Report == null) return;
 
-            if (Report.status == CallIncidentStatus.Responding)
+            float fraction = Report.timeLimit > 0f ? Mathf.Clamp01(Report.timeRemaining / Report.timeLimit) : 0f;
+            if (timeRing != null)
             {
-                countdownText.text = $"<mark=#0B0F14CC> {Loc.T("EN ROUTE")} </mark>";
-                countdownText.color = CountdownEnRoute;
-                return;
+                timeRing.fillAmount = fraction;
+                timeRing.color = fraction < urgentFraction
+                    ? Color.Lerp(UrgentColor, TimeColor, fraction / urgentFraction * 0.3f)
+                    : TimeColor;
             }
 
-            if (Report.status == CallIncidentStatus.Working)
+            if (workRing != null)
             {
-                // Olay yerinde iş: kalan süre ekip sayısıyla kısalır
-                int left = Mathf.CeilToInt(Report.WorkSecondsLeft);
-                countdownText.text = $"<mark=#0B0F14CC> {Loc.T("WORK")} {left / 60}:{left % 60:00} </mark>";
-                countdownText.color = CountdownEnRoute;
-                if (spriteRenderer != null) spriteRenderer.color = Color.white;
-                return;
+                float work = Report.workRequired > 0f ? Mathf.Clamp01(Report.workDone / Report.workRequired) : 0f;
+                workRing.fillAmount = work;
+                workRing.color = WorkColor;
+                workRing.enabled = work > 0.001f;
             }
-
-            int seconds = Mathf.CeilToInt(Mathf.Max(0f, Report.timeRemaining));
-            countdownText.text = $"<mark=#0B0F14CC> {seconds / 60}:{seconds % 60:00} </mark>";
-            countdownText.color = Report.timeRemaining < urgentPulseBelowSeconds ? CountdownUrgent : CountdownNormal;
         }
     }
 }

@@ -92,11 +92,11 @@ namespace ZeroHour.Phase2.Calls
 
         private static AudioClip rumble, explosion, crackle, rain, alarm;
 
-        /// <summary>Deprem gürlemesi: derin, yavaşça sönen uğultu (3 sn).</summary>
-        public static AudioClip Rumble => rumble != null ? rumble : (rumble = CreateNoiseClip("Procedural_QuakeRumble", 3f, 0.02f, 0.9f, 11, (t, d) => Mathf.Clamp01(t / 0.15f) * Mathf.Pow(1f - t / d, 1.5f) * (0.75f + 0.25f * Mathf.Sin(t * 37f))));
+        /// <summary>Deprem gürlemesi: derin, hızla sönen uğultu (1.6 sn).</summary>
+        public static AudioClip Rumble => rumble != null ? rumble : (rumble = CreateNoiseClip("Procedural_QuakeRumble", 1.6f, 0.02f, 0.9f, 11, (t, d) => Mathf.Clamp01(t / 0.08f) * Mathf.Pow(1f - t / d, 1.8f) * (0.75f + 0.25f * Mathf.Sin(t * 37f))));
 
-        /// <summary>Patlama: sert başlangıç, kısa kuyruk (1.6 sn).</summary>
-        public static AudioClip Explosion => explosion != null ? explosion : (explosion = CreateNoiseClip("Procedural_Explosion", 1.6f, 0.06f, 1f, 23, (t, d) => Mathf.Clamp01(t / 0.005f) * Mathf.Exp(-t * 3.2f)));
+        /// <summary>Patlama: sert başlangıç, kısa kuyruk (1.1 sn).</summary>
+        public static AudioClip Explosion => explosion != null ? explosion : (explosion = CreateNoiseClip("Procedural_Explosion", 1.1f, 0.06f, 1f, 23, (t, d) => Mathf.Clamp01(t / 0.005f) * Mathf.Exp(-t * 4.5f)));
 
         /// <summary>Yangın çıtırtısı (döngü, 3 sn).</summary>
         public static AudioClip Crackle => crackle != null ? crackle : (crackle = CreateCrackleClip());

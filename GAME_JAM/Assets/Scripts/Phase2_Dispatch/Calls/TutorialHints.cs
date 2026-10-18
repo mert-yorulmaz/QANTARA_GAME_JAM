@@ -21,7 +21,7 @@ namespace ZeroHour.Phase2.Calls
         private static readonly string WelcomeHint = "Answer incoming calls (bottom left). Each call puts a marker on the map.";
         private static readonly string OpenMarkerHint = "Click the marker on the map to open the incident file.";
         private static readonly string DispatchHint = "Choose units with [+] (see 'Possible units') and press DISPATCH.";
-        private static readonly string TeamworkHint = "More units of the right type finish the job faster. Watch the timers!";
+        private static readonly string TeamworkHint = "The yellow ring must close before the white one runs out. Helicopters arrive first!";
 
         private void Start()
         {
@@ -42,6 +42,9 @@ namespace ZeroHour.Phase2.Calls
         {
             stepTimer += Time.unscaledDeltaTime;
             IncidentBoard board = IncidentBoard.Instance;
+
+            // Vardiya bitince ipucu kalmasın (karne ekranı)
+            if (ShiftClock.Instance != null && ShiftClock.Instance.IsOver && step != Step.Done) SetStep(Step.Done);
 
             switch (step)
             {

@@ -37,6 +37,8 @@ namespace ZeroHour.Phase2.Calls
         [Header("Ses")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField, Range(0f, 1f)] private float ringVolume = 0.55f;
+        [Tooltip("Zil bu kadar çalar, sonra susar (kart yanıp sönmeye devam eder)")]
+        [SerializeField] private float ringAudioSeconds = 5f;
         [SerializeField, Range(0f, 1f)] private float mumbleVolume = 0.9f;
 
         private CallState state = CallState.Idle;
@@ -93,6 +95,8 @@ namespace ZeroHour.Phase2.Calls
                         c.a = 0.45f * blink;
                         ringingIconBlink.color = c;
                     }
+
+                    if (timer >= ringAudioSeconds && audioSource.isPlaying) audioSource.Stop();
 
                     if (timer >= ringTimeout)
                     {

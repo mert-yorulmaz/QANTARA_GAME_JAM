@@ -205,7 +205,7 @@ namespace ZeroHour.Phase2.Calls
             SetText(stampText, Loc.T(report.urgent ? "URGENT" : "ROUTINE"));
             SetText(incidentValueText, IncidentBoard.LocalizedTitle(report));
             SetText(addressValueText, IncidentBoard.LocalizedAddress(report));
-            SetText(affectedValueText, Loc.F("{0} people · {1} injured", report.affected, report.injured));
+            SetText(affectedValueText, Loc.F("{0} people · {1} injured", report.affected, report.injuredRemaining));
             SetText(notesValueText, IncidentBoard.LocalizedNotes(report));
             SetText(photoCaptionText, $"{IncidentBoard.LocalizedStreetShort(report)} · {report.callTime}");
         }
@@ -249,6 +249,7 @@ namespace ZeroHour.Phase2.Calls
         private void Refresh()
         {
             bool waiting = current.status == CallIncidentStatus.Waiting;
+            bool open = current.status != CallIncidentStatus.Closed; // Takviye: olay kapanana kadar ekip gönderilebilir
             AStarMovementTester fleet = AStarMovementTester.Instance;
             int totalSelected = 0;
 
@@ -264,18 +265,19 @@ namespace ZeroHour.Phase2.Calls
 
                 SetText(row.freeText, free.ToString());
                 SetText(row.countText, row.selected.ToString());
-                if (row.minusButton != null) row.minusButton.interactable = waiting && row.selected > 0;
-                if (row.plusButton != null) row.plusButton.interactable = waiting && row.selected < max;
+                if (row.minusButton != null) row.minusButton.interactable = open && row.selected > 0;
+                if (row.plusButton != null) row.plusButton.interactable = open && row.selected < max;
             }
 
-            RefreshHeliSlots(waiting && !current.HelicopterActsAsItself ? helisSelected : 0);
+            RefreshHeliSlots(open && !current.HelicopterActsAsItself ? helisSelected : 0);
 
-            string timeLeft = waiting
-                ? Loc.F(" · {0}s left", Mathf.CeilToInt(Mathf.Max(0f, current.timeRemaining)))
-                : Loc.T(current.status == CallIncidentStatus.Working ? " · UNITS ON SCENE" : " · UNITS EN ROUTE");
-            SetText(callInfoText, Loc.F("Call {0} · Line {1}", current.callTime, current.line) + timeLeft);
+            // Süre sayı olarak gösterilmez (haritadaki çember); sadece gerçek durum
+            string status = "";
+            if (current.onSiteUnits.Count > 0) status = Loc.T(" · UNITS ON SCENE");
+            else if (fleet != null && fleet.CountVehiclesEnRoute(current.sitePosition) > 0) status = Loc.T(" · UNITS EN ROUTE");
+            SetText(callInfoText, Loc.F("Call {0} · Line {1}", current.callTime, current.line) + status);
 
-            bool canDispatch = waiting && totalSelected > 0;
+            bool canDispatch = open && totalSelected > 0;
             if (dispatchButton != null) dispatchButton.interactable = canDispatch;
             if (dispatchActiveFill != null) dispatchActiveFill.enabled = canDispatch;
             if (dispatchLabel != null) dispatchLabel.color = canDispatch ? CreamColor : new Color(CreamColor.r, CreamColor.g, CreamColor.b, 0.8f);
@@ -304,14 +306,14 @@ namespace ZeroHour.Phase2.Calls
 
         private void SetHeliRole(HeliRoleSlot slot, UnitType role)
         {
-            if (current == null || current.status != CallIncidentStatus.Waiting) return;
+            if (current == null || current.status == CallIncidentStatus.Closed) return;
             slot.role = role;
             Refresh();
         }
 
         private void ChangeCount(UnitRow row, int delta)
         {
-            if (current == null || current.status != CallIncidentStatus.Waiting) return;
+            if (current == null || current.status == CallIncidentStatus.Closed) return;
             row.selected += delta;
             Refresh();
         }
@@ -393,6 +395,9 @@ namespace ZeroHour.Phase2.Calls
 
             photoCamera.CopyFrom(main);
             photoCamera.targetTexture = photoTexture;
+            // Rozet çemberleri (dünya uzayı UI) fotoğrafa girmesin
+            int uiLayer = LayerMask.NameToLayer("UI");
+            if (uiLayer >= 0) photoCamera.cullingMask = main.cullingMask & ~(1 << uiLayer);
             photoCamera.fieldOfView = 32f;
             photoCamera.depth = main.depth - 10f;
 

@@ -110,10 +110,10 @@ namespace ZeroHour.Phase2.Calls
             if (debriefStatsText != null)
             {
                 debriefStatsText.text =
-                    $"{Loc.T("Survivors")}<pos=56%>{survivors} / {total}\n" +
-                    $"{Loc.T("Rescued")}<pos=56%>{rescued}\n" +
-                    $"{Loc.T("Lost")}<pos=56%>{lost}\n" +
-                    $"{Loc.T("Survival")}<pos=56%>{rate:0}%";
+                    $"{Loc.T("Survivors")}<pos=62%>{survivors} / {total}\n" +
+                    $"{Loc.T("Rescued")}<pos=62%>{rescued}\n" +
+                    $"{Loc.T("Lost")}<pos=62%>{lost}\n" +
+                    $"{Loc.T("Survival")}<pos=62%>{rate:0}%";
             }
 
             if (debriefGradeText != null) debriefGradeText.text = Grade(rate);
@@ -122,10 +122,10 @@ namespace ZeroHour.Phase2.Calls
 
         private static string Grade(float survivalPercent)
         {
-            if (survivalPercent >= 95f) return "S";
-            if (survivalPercent >= 85f) return "A";
-            if (survivalPercent >= 70f) return "B";
-            if (survivalPercent >= 50f) return "C";
+            if (survivalPercent >= 98f) return "S";
+            if (survivalPercent >= 93f) return "A";
+            if (survivalPercent >= 85f) return "B";
+            if (survivalPercent >= 75f) return "C";
             return "F";
         }
 

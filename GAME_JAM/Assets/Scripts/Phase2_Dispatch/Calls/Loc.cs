@@ -128,7 +128,7 @@ namespace ZeroHour.Phase2.Calls
             { "Answer incoming calls (bottom left). Each call puts a marker on the map.", "Gelen çağrıları aç (sol alt). Her çağrı haritaya bir rozet koyar." },
             { "Click the marker on the map to open the incident file.", "Olay dosyasını açmak için haritadaki rozete tıkla." },
             { "Choose units with [+] (see 'Possible units') and press DISPATCH.", "[+] ile ekip seç ('Olası ekipler'e bak) ve SEVK ET'e bas." },
-            { "More units of the right type finish the job faster. Watch the timers!", "Doğru türden ekip ne kadar çoksa iş o kadar hızlı biter. Süreleri takip et!" },
+            { "The yellow ring must close before the white one runs out. Helicopters arrive first!", "Sarı çember, beyaz çember bitmeden kapanmalı. Helikopter herkesten önce varır!" },
 
             // Vardiya sonu
             { "SHIFT OVER · 05:00 AM", "VARDİYA BİTTİ · 05:00" },
@@ -137,7 +137,7 @@ namespace ZeroHour.Phase2.Calls
             { "Survivors", "Hayatta" },
             { "Rescued", "Kurtarılan" },
             { "Lost", "Kayıp" },
-            { "Survival", "Hayatta kalma" },
+            { "Survival", "Sağ kalım" },
         };
     }
 }

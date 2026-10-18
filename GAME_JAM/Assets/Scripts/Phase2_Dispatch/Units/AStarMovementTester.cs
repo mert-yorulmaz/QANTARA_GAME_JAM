@@ -14,14 +14,25 @@ namespace ZeroHour.Phase2.Units
         /// <summary>Bir aracın görev durumu değiştiğinde (sevk edildi / üsse döndü) tetiklenir.</summary>
         public event Action OnFleetChanged;
 
-        /// <summary>Sevk edilen bir araç olay yerine ulaştığında tetiklenir (birim tipi, sevk hedefi).</summary>
-        public event Action<UnitType, Vector3> OnVehicleArrived;
+        /// <summary>Sevk edilen bir araç olay yerine ulaştığında tetiklenir (birim tipi, sevk hedefi, araç).</summary>
+        public event Action<UnitType, Vector3, GameObject> OnVehicleArrived;
 
         [Header("Debug Paneli (Sol üst OnGUI + Space kısayolu)")]
         [SerializeField] private bool showDebugPanel = true;
 
         [Header("Hız (1 = orijinal, 0.6 = %40 daha yavaş)")]
         [SerializeField, Range(0.2f, 1f)] private float speedMultiplier = 1f;
+        [Tooltip("Helikopter hız çarpanı (kara araçlarından bağımsız: helikopter hızlı ilk müdahalecidir)")]
+        [SerializeField, Range(0.2f, 1.5f)] private float helicopterSpeedMultiplier = 1f;
+
+        [Header("İstasyondan Çıkış (araçlar sevk edilince doğar, dönünce kaybolur)")]
+        [Tooltip("Aynı istasyondan iki araç arasındaki çıkış aralığı (sn) — üst üste doğmasınlar")]
+        [SerializeField] private float groundSpawnInterval = 2.2f;
+        [SerializeField] private float helicopterSpawnInterval = 1.5f;
+        [Tooltip("Açıkken araçlar sadece görevdeyken görünür (oyun modu)")]
+        [SerializeField] private bool spawnOnDispatch = false;
+
+        private readonly Dictionary<UnitType, float> lastSpawnTime = new Dictionary<UnitType, float>();
 
         [Header("Filo Büyüklüğü (fazlası istasyonda klonlanır; 1 = sadece sahnedeki araç)")]
         [SerializeField, Range(1, 6)] private int policeCount = 1;
@@ -78,6 +89,10 @@ namespace ZeroHour.Phase2.Units
             // Takılma kurtarıcısı: çok araçlı sıkışmalarda (3+ araçlık yol verme döngüsü) radarı kısa süre yok say
             public float stuckTime;
             public float radarBypassUntil;
+
+            // İstasyondan sıralı çıkış: araç görünmezken sevk edilirse spawnAt anında istasyonda doğar
+            public bool spawnPending;
+            public float spawnAt;
         }
 
         private readonly List<VehicleTestState> vehicleStates = new List<VehicleTestState>();
@@ -97,16 +112,26 @@ namespace ZeroHour.Phase2.Units
         private void Start()
         {
             AutoAssignFourUnits();
-            SpawnFleetClones();
+            CreateFleetPool();
             InitializeVehicles();
             CreateTargetMarker();
+
+            // Oyun modu: araçlar istasyonda beklerken görünmez; sevk edilince doğar
+            if (spawnOnDispatch)
+            {
+                foreach (var state in vehicleStates)
+                {
+                    if (state.obj != null) state.obj.SetActive(false);
+                }
+            }
         }
 
         // ==========================================
-        // FİLO: Her tipten istenen sayıda aracı istasyonda klonla
+        // FİLO HAVUZU: Her tipten istenen sayıda araç. Hepsi aynı istasyon noktasını kullanır
+        // (aynı noktada doğar, aynı noktada kaybolur); sıralı çıkış üst üste binmeyi önler.
         // ==========================================
 
-        private void SpawnFleetClones()
+        private void CreateFleetPool()
         {
             fleetTypes.Clear();
             if (ambulance != null) fleetTypes[ambulance] = UnitType.Ambulance;
@@ -114,143 +139,22 @@ namespace ZeroHour.Phase2.Units
             if (fireTruck != null) fleetTypes[fireTruck] = UnitType.FireEngine;
             if (helicopter != null) fleetTypes[helicopter] = UnitType.RescueHelicopter;
 
-            SpawnClones(policeCar, UnitType.PoliceCruiser, policeCount);
-            SpawnClones(ambulance, UnitType.Ambulance, ambulanceCount);
-            SpawnClones(fireTruck, UnitType.FireEngine, fireTruckCount);
-            SpawnClones(helicopter, UnitType.RescueHelicopter, helicopterCount);
+            AddPoolCopies(policeCar, UnitType.PoliceCruiser, policeCount);
+            AddPoolCopies(ambulance, UnitType.Ambulance, ambulanceCount);
+            AddPoolCopies(fireTruck, UnitType.FireEngine, fireTruckCount);
+            AddPoolCopies(helicopter, UnitType.RescueHelicopter, helicopterCount);
         }
 
-        private readonly List<Transform> heliRoofs = new List<Transform>();
-
-        /// <summary>Üstünde helikopter park eden bina mı? (Bu binalarda olay çıkmaz.)</summary>
-        public bool IsHeliRoof(Transform building)
+        private void AddPoolCopies(GameObject original, UnitType type, int totalCount)
         {
-            return heliRoofs.Contains(building);
-        }
-
-        /// <summary>
-        /// Helipad'li çatıya tek helikopter sığıyor; ek helikopterler en yakın geniş çatılara park eder.
-        /// </summary>
-        private void SpawnHeliClonesOnRoofs(GameObject original, int totalCount)
-        {
-            Vector3 home = original.transform.position;
-            Transform homeRoof = FindRoofBuilding(home, out Bounds homeBounds);
-            if (homeRoof != null) heliRoofs.Add(homeRoof);
-            float heightAboveRoof = homeRoof != null ? home.y - homeBounds.max.y : 0.3f;
-
-            List<(Transform building, Bounds bounds, float distance)> roofs = new List<(Transform, Bounds, float)>();
-            foreach (GameObject go in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
+            if (original == null) return;
+            for (int i = 1; i < totalCount; i++)
             {
-                if (!go.activeInHierarchy || !go.name.StartsWith("Building") || go.transform == homeRoof) continue;
-                Bounds b = GetBounds(go);
-                if (b.size == Vector3.zero) continue;
-                if (Mathf.Min(b.size.x, b.size.z) < 10f || b.size.y < 8f) continue; // helikopter sığmayan / çok alçak çatı
-                Vector3 flat = b.center - home; flat.y = 0f;
-                roofs.Add((go.transform, b, flat.magnitude));
+                GameObject copy = Instantiate(original, original.transform.position, original.transform.rotation);
+                copy.name = $"{original.name} #{i + 1}";
+                fleetTypes[copy] = type;
+                vehicles.Add(copy);
             }
-            roofs.Sort((a, b) => a.distance.CompareTo(b.distance));
-
-            int spawned = 1;
-            foreach (var roof in roofs)
-            {
-                if (spawned >= totalCount) break;
-                Vector3 spot = new Vector3(roof.bounds.center.x, roof.bounds.max.y + heightAboveRoof, roof.bounds.center.z);
-
-                GameObject clone = Instantiate(original, spot, original.transform.rotation);
-                clone.name = $"{original.name} #{spawned + 1}";
-                fleetTypes[clone] = UnitType.RescueHelicopter;
-                vehicles.Add(clone);
-                heliRoofs.Add(roof.building);
-                spawned++;
-            }
-
-            if (spawned < totalCount)
-            {
-                Debug.LogWarning($"[A* Tester] Helikopter: {totalCount} istendi, uygun çatı bulunabilen {spawned} helikopter oluşturuldu.");
-            }
-        }
-
-        private static Bounds GetBounds(GameObject go)
-        {
-            Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0) return default;
-            Bounds b = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
-            return b;
-        }
-
-        private static Transform FindRoofBuilding(Vector3 point, out Bounds bounds)
-        {
-            foreach (GameObject go in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
-            {
-                if (!go.name.StartsWith("Building")) continue;
-                Bounds b = GetBounds(go);
-                if (b.size == Vector3.zero) continue;
-                if (point.x >= b.min.x && point.x <= b.max.x && point.z >= b.min.z && point.z <= b.max.z)
-                {
-                    bounds = b;
-                    return go.transform;
-                }
-            }
-            bounds = default;
-            return null;
-        }
-
-        private void SpawnClones(GameObject original, UnitType type, int totalCount)
-        {
-            if (original == null || totalCount <= 1) return;
-
-            bool isHeli = type == UnitType.RescueHelicopter;
-            if (isHeli)
-            {
-                SpawnHeliClonesOnRoofs(original, totalCount);
-                return;
-            }
-            Transform t = original.transform;
-            Vector3 home = t.position;
-
-            // Kara araçları istasyonda arka arkaya (konvoy mesafesinde) park eder
-            float spacing = type == UnitType.FireEngine ? 11f : 9.5f;
-            Vector3 stepDir = -t.forward;
-            stepDir.y = 0f;
-            stepDir.Normalize();
-
-            int spawned = 1;
-            for (int i = 1; spawned < totalCount && i <= totalCount * 4; i++)
-            {
-                // Sırayla arka (+) ve ön (-) taraf denenir: 1, -1, 2, -2 ...
-                int slot = (i + 1) / 2;
-                float side = (i % 2 == 1) ? 1f : -1f;
-                Vector3 candidate = home + stepDir * (spacing * slot * side);
-
-                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, 2.5f, NavMesh.AllAreas)) continue;
-                candidate = hit.position;
-
-                if (IsParkingSpotTaken(candidate, spacing * 0.8f)) continue;
-
-                GameObject clone = Instantiate(original, candidate, t.rotation);
-                clone.name = $"{original.name} #{spawned + 1}";
-                fleetTypes[clone] = type;
-                vehicles.Add(clone);
-                spawned++;
-            }
-
-            if (spawned < totalCount)
-            {
-                Debug.LogWarning($"[A* Tester] {type}: {totalCount} araç istendi, istasyonda yer bulunabilen {spawned} araç oluşturuldu.");
-            }
-        }
-
-        private bool IsParkingSpotTaken(Vector3 spot, float minDistance)
-        {
-            foreach (GameObject v in vehicles)
-            {
-                if (v == null) continue;
-                Vector3 a = v.transform.position; a.y = 0f;
-                Vector3 b = spot; b.y = 0f;
-                if (Vector3.Distance(a, b) < minDistance) return true;
-            }
-            return false;
         }
 
         private UnitType ResolveUnitType(GameObject v, bool isHeli)
@@ -508,6 +412,13 @@ namespace ZeroHour.Phase2.Units
             {
                 if (state.finished || state.obj == null || !state.inMission) continue;
 
+                // İstasyondan sıralı çıkış: sırası gelen araç istasyon noktasında doğar
+                if (state.spawnPending)
+                {
+                    if (Time.time >= state.spawnAt) SpawnAtStation(state);
+                    continue;
+                }
+
                 if (state.isHelicopter)
                 {
                     UpdateHelicopterMovement(state);
@@ -569,8 +480,28 @@ namespace ZeroHour.Phase2.Units
             state.holdAtSite = false;
             state.released = false;
             state.hoverOffset = Vector3.zero;
+            state.stuckTime = 0f;
+            state.radarBypassUntil = 0f;
             state.status = "Yolda (Hedefe Gidiyor...)";
 
+            if (state.obj != null && !state.obj.activeSelf)
+            {
+                // Araç istasyonda görünmez bekliyor: aynı tipteki bir önceki çıkıştan sonra sırası gelince doğacak
+                float interval = state.isHelicopter ? helicopterSpawnInterval : groundSpawnInterval;
+                float last = lastSpawnTime.TryGetValue(state.unitType, out float t) ? t : -999f;
+                state.spawnAt = Mathf.Max(Time.time, last + interval);
+                lastSpawnTime[state.unitType] = state.spawnAt;
+                state.spawnPending = true;
+                state.status = "İstasyondan çıkmayı bekliyor...";
+                return;
+            }
+
+            state.spawnPending = false;
+            StartDriving(state);
+        }
+
+        private void StartDriving(VehicleTestState state)
+        {
             if (!state.isHelicopter && state.agent != null && state.agent.isOnNavMesh)
             {
                 state.agent.isStopped = false;
@@ -579,8 +510,25 @@ namespace ZeroHour.Phase2.Units
 
                 // Bütün araçlar yolun orta asfaltındaki cadde hedefine yönelir.
                 // Birbirinin arkasında durma ve mesafe koruma işini UpdateGroundAgentMovement yapar.
-                state.agent.SetDestination(roadTarget);
+                state.agent.SetDestination(state.missionRoadTarget);
             }
+        }
+
+        private void SpawnAtStation(VehicleTestState state)
+        {
+            state.spawnPending = false;
+            state.obj.transform.SetPositionAndRotation(state.homePosition, state.homeRotation);
+            state.obj.SetActive(true);
+
+            if (!state.isHelicopter && state.agent != null)
+            {
+                state.agent.enabled = true;
+                state.agent.Warp(state.homePosition);
+            }
+
+            state.status = "Yolda (Hedefe Gidiyor...)";
+            StartDriving(state);
+            OnFleetChanged?.Invoke();
         }
 
         // ==========================================
@@ -639,12 +587,21 @@ namespace ZeroHour.Phase2.Units
         /// Hareket, konvoy mesafesi ve VTOL mantığı test moduyla birebir aynıdır.
         /// </summary>
         /// <returns>Yola çıkan araç sayısı.</returns>
-        public int DispatchVehicles(Vector3 siteTarget, IList<UnitType> types)
+        public int DispatchVehicles(Vector3 siteTarget, IList<UnitType> types, List<GameObject> dispatched = null)
         {
             Vector3 roadTarget = GetRoadTargetNear(siteTarget);
-            List<GameObject> queue = new List<GameObject>();
-            int sent = 0;
+
+            // Takviye: aynı olay yerinde zaten araç varsa onların park kuyruğuna katıl (üst üste park etmesinler)
+            List<GameObject> queue = null;
             int helisSent = 0;
+            foreach (var other in vehicleStates)
+            {
+                if (!other.inMission || other.released || (other.missionTarget - siteTarget).sqrMagnitude > 0.01f) continue;
+                if (queue == null && other.parkQueue != null) queue = other.parkQueue;
+                if (other.isHelicopter) helisSent++; // Yeni helikopterler havada farklı noktada beklesin
+            }
+            if (queue == null) queue = new List<GameObject>();
+            int sent = 0;
 
             foreach (UnitType type in types)
             {
@@ -666,6 +623,7 @@ namespace ZeroHour.Phase2.Units
                     }
 
                     sent++;
+                    if (dispatched != null) dispatched.Add(state.obj);
                     break;
                 }
             }
@@ -696,7 +654,42 @@ namespace ZeroHour.Phase2.Units
         {
             if (state.arrivedReported) return;
             state.arrivedReported = true;
-            OnVehicleArrived?.Invoke(state.unitType, state.missionTarget);
+            OnVehicleArrived?.Invoke(state.unitType, state.missionTarget, state.obj);
+        }
+
+        /// <summary>Aracın birim tipi.</summary>
+        public UnitType GetUnitType(GameObject vehicle)
+        {
+            foreach (var state in vehicleStates)
+            {
+                if (state.obj == vehicle) return state.unitType;
+            }
+            return UnitType.Ambulance;
+        }
+
+        /// <summary>Bu olay yerine yolda olan (henüz varmamış) araç sayısı.</summary>
+        public int CountVehiclesEnRoute(Vector3 siteTarget)
+        {
+            int count = 0;
+            foreach (var state in vehicleStates)
+            {
+                if (!state.inMission || state.arrivedReported || state.released || state.returning) continue;
+                if ((state.missionTarget - siteTarget).sqrMagnitude > 0.01f) continue;
+                count++;
+            }
+            return count;
+        }
+
+        /// <summary>Tek bir aracı olay yerinden serbest bırakır (örn. suyu / yakıtı biten helikopter).</summary>
+        public void ReleaseVehicle(GameObject vehicle)
+        {
+            foreach (var state in vehicleStates)
+            {
+                if (state.obj != vehicle || !state.inMission || state.released) continue;
+                state.released = true;
+                state.timer = 0f;
+                return;
+            }
         }
 
         /// <summary>
@@ -718,6 +711,10 @@ namespace ZeroHour.Phase2.Units
         private void FinishMission(VehicleTestState state)
         {
             state.inMission = false;
+
+            // Oyun modu: istasyona dönen araç kaybolur (bir sonraki sevkte aynı noktada yeniden doğar)
+            if (spawnOnDispatch && state.obj != null) state.obj.SetActive(false);
+
             OnFleetChanged?.Invoke();
         }
 
@@ -770,6 +767,20 @@ namespace ZeroHour.Phase2.Units
             foreach (var other in vehicleStates)
             {
                 if (other == current || other.isHelicopter || other.obj == null || other.finished || !other.inMission) continue;
+                if (other.spawnPending || !other.obj.activeInHierarchy) continue;
+
+                // Trafik sıkışmasın: sadece (a) aynı olay yerine sıraya giren araçlar ve
+                // (b) aynı yöne hareket eden araçlar için fren yapılır. Başka olay yerinde park etmiş,
+                // karşıdan gelen veya duran araçların arasından NavMesh çarpışma önleyicisi geçirir.
+                bool sameSiteQueue = !current.returning && !other.returning && current.parkQueue != null && other.parkQueue == current.parkQueue;
+                bool movingSameWay = false;
+                if (other.agent != null && other.agent.velocity.sqrMagnitude > 1f)
+                {
+                    Vector3 otherVel = other.agent.velocity;
+                    otherVel.y = 0f;
+                    movingSameWay = Vector3.Dot(myMoveDir, otherVel.normalized) > 0.3f;
+                }
+                if (!sameSiteQueue && !movingSameWay) continue;
 
                 Vector3 otherPos = other.obj.transform.position;
                 otherPos.y = 0f;
@@ -929,7 +940,7 @@ namespace ZeroHour.Phase2.Units
 
                     int reverseIndex = (totalParked - 1) - myQueueIndex;
                     if (reverseIndex < 0) reverseIndex = 0;
-                    returnStagger = reverseIndex * 2.0f;
+                    returnStagger = reverseIndex * (state.holdAtSite ? 1.2f : 2.0f); // Sevk görevlerinde daha seri ayrılış
 
                     // Sevk görevinde bekleme süresi işin kendisidir; serbest bırakılınca sadece sıralı ayrılış gecikmesi kalır
                     float requiredWait = state.holdAtSite ? 0.5f : waitDurationAtTarget;
@@ -940,6 +951,7 @@ namespace ZeroHour.Phase2.Units
                         state.returning = true;
                         state.timer = 0f;
                         state.status = "Üsse Geri Dönüyor (A*)...";
+                        if (state.holdAtSite) parkedAtTarget.Remove(state.obj); // Takviyeler gitmiş aracı "öndeki" sanmasın
                         agent.ResetPath();
                         agent.isStopped = false;
                         agent.speed = CruiseSpeed;
@@ -1025,8 +1037,8 @@ namespace ZeroHour.Phase2.Units
 
             // Çatının da üstünde ferah seyir irtifası
             float cruiseAltitude = Mathf.Max(35f, state.homePosition.y + 12f);
-            float heliFlightSpeed = 36f * speedMultiplier; // Yüksek hız (çarpan 1'de)
-            float verticalSpeed = 14f * speedMultiplier;
+            float heliFlightSpeed = 36f * helicopterSpeedMultiplier; // Yollardan bağımsız, hızlı ilk müdahale
+            float verticalSpeed = 14f * helicopterSpeedMultiplier;
 
             if (!state.returning)
             {
@@ -1094,7 +1106,7 @@ namespace ZeroHour.Phase2.Units
                 {
                     // FAZ 4: Dikey İniş (Helipade asansör gibi yumuşakça in)
                     state.status = "Helipade Dikey İniş Yapıyor...";
-                    t.position = Vector3.MoveTowards(t.position, state.homePosition, 10f * speedMultiplier * Time.deltaTime);
+                    t.position = Vector3.MoveTowards(t.position, state.homePosition, 10f * helicopterSpeedMultiplier * Time.deltaTime);
                     t.rotation = Quaternion.Slerp(t.rotation, state.homeRotation, 8f * Time.deltaTime);
 
                     if (Vector3.Distance(t.position, state.homePosition) < 0.25f)

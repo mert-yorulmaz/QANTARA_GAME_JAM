@@ -85,9 +85,12 @@ namespace ZeroHour.Phase2.Calls
         }
 
         // ---------- SES ----------
+        private const float LoopAudioSeconds = 4f;
+
         private AudioSource loopAudio;
         private AudioSource oneShotAudio;
         private float loopBaseVolume;
+        private float audioTimer;
 
         private void BuildAudio()
         {
@@ -416,7 +419,16 @@ namespace ZeroHour.Phase2.Calls
         {
             float dt = Time.deltaTime;
 
-            if (stopping && loopAudio != null) loopAudio.volume = Mathf.MoveTowards(loopAudio.volume, 0f, dt * loopBaseVolume / 2f);
+            // Sürekli ses kısa çalar ve söner (uzun süre çalması rahatsız ediyordu)
+            if (loopAudio != null)
+            {
+                audioTimer += dt;
+                if (stopping || audioTimer > LoopAudioSeconds)
+                {
+                    loopAudio.volume = Mathf.MoveTowards(loopAudio.volume, 0f, dt * loopBaseVolume);
+                    if (loopAudio.volume <= 0f) loopAudio.Stop();
+                }
+            }
 
             // Titreyen ateş ışığı
             for (int i = 0; i < flickerLights.Count; i++)

@@ -21,6 +21,15 @@ namespace ZeroHour.Phase2.Calls
         Closed       // Çözüldü / kaybedildi / reddedildi
     }
 
+    /// <summary>Olay yerine varmış bir araç (helikopterin suyu / yakıtı sınırlıdır).</summary>
+    public class OnSiteUnit
+    {
+        public GameObject vehicle;
+        public UnitType role;
+        public bool isHelicopter;
+        public float arrivedAtElapsed;
+    }
+
     /// <summary>
     /// Dinlenen bir çağrıdan doğan olay kaydı (Kaza Dosyası'nın verisi).
     /// </summary>
@@ -50,13 +59,16 @@ namespace ZeroHour.Phase2.Calls
         public bool urgent;
         public float timeRemaining;
         public float timeLimit;
-        public float respondingTime;   // Ekip yola çıktıktan beri geçen süre (takılma güvencesi)
 
         public readonly List<UnitType> sentUnits = new List<UnitType>();   // Gönderilen araç tipleri (helikopter = RescueHelicopter)
         public readonly List<UnitType> sentRoles = new List<UnitType>();   // Yapılacak iş: helikopterler seçilen rolde sayılır
-        public readonly List<UnitType> heliRoles = new List<UnitType>();   // Her helikopterin rolü (ambulans / polis / itfaiye)
-        public readonly List<UnitType> onSiteRoles = new List<UnitType>(); // Olay yerine varmış araçların rolleri
-        public int helisArrived;
+        public readonly Dictionary<GameObject, UnitType> heliRoleByVehicle = new Dictionary<GameObject, UnitType>(); // Her helikopterin rolü
+        public readonly List<OnSiteUnit> onSiteUnits = new List<OnSiteUnit>(); // Olay yerinde çalışan araçlar
+
+        // Süre ve kayıplar: süre olay kapanana kadar işler; yardım gelene kadar yaralılar ölebilir
+        public float elapsed;
+        public int injuredRemaining;
+        public int deaths;
 
         // Olay yerinde iş: workRequired saniye × (1 gerekli ekip). Ekip sayısı arttıkça hızlanır.
         public float workRequired;

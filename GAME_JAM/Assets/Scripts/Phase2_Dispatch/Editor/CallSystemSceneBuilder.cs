@@ -91,8 +91,6 @@ namespace ZeroHour.Phase2.Editor
             boardSo.FindProperty("gasMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_gas", new Color(1f, 0.45f, 0.15f), ExplosionIcon);
             boardSo.FindProperty("floodMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_flood", new Color(0.25f, 0.65f, 1f), WaveIcon);
             boardSo.FindProperty("unrestMarkerSprite").objectReferenceValue = GenerateMarkerSprite("marker_unrest", new Color(0.66f, 0.42f, 1f), AlarmIcon);
-            boardSo.FindProperty("unattendedTimeout").floatValue = 45f;
-            boardSo.FindProperty("respondingTimeout").floatValue = 60f;
             boardSo.FindProperty("maxActiveIncidents").intValue = 5;
             SerializedProperty excluded = boardSo.FindProperty("excludedBuildings");
             excluded.arraySize = stationBuildings.Count;
@@ -251,27 +249,144 @@ namespace ZeroHour.Phase2.Editor
             col.isTrigger = true;
             IncidentMarker marker = temp.AddComponent<IncidentMarker>();
 
-            // Rozetin üstündeki geri sayım ("0:45" / "EN ROUTE"). Altta olursa çatının içinde kalıp görünmüyordu.
+            // Rozetin çevresindeki çember (sayısal geri sayım yok):
+            // süre yayı saat yönünde azalır, ekip varınca aynı noktadan sarı iş yayı dolar.
             float spriteSize = defaultSprite != null ? Mathf.Max(defaultSprite.bounds.size.x, defaultSprite.bounds.size.y) : 1f;
-            GameObject countdownObj = new GameObject("Countdown");
-            countdownObj.transform.SetParent(temp.transform, false);
-            countdownObj.transform.localPosition = new Vector3(0f, spriteSize * 0.95f, 0f);
-            TextMeshPro countdown = countdownObj.AddComponent<TextMeshPro>();
-            if (pixelFont != null) countdown.font = pixelFont;
-            countdown.text = "0:45";
-            countdown.fontSize = 5.2f * spriteSize;
-            countdown.alignment = TextAlignmentOptions.Center;
-            countdown.textWrappingMode = TextWrappingModes.NoWrap;
-            countdown.rectTransform.sizeDelta = new Vector2(spriteSize * 3f, spriteSize * 0.8f);
-            countdownObj.GetComponent<MeshRenderer>().sortingOrder = 501;
+            Sprite ringSprite = GetOrCreateRingSprite();
+
+            GameObject ringObj = new GameObject("Ring", typeof(RectTransform));
+            ringObj.transform.SetParent(temp.transform, false);
+            Canvas ringCanvas = ringObj.AddComponent<Canvas>();
+            ringCanvas.renderMode = RenderMode.WorldSpace;
+            ringCanvas.sortingOrder = 499; // rozet ikonunun (500) arkasında, çevresinde
+            RectTransform ringRt = (RectTransform)ringObj.transform;
+            ringRt.sizeDelta = new Vector2(100f, 100f);
+            ringRt.localPosition = Vector3.zero;
+            ringRt.localScale = Vector3.one * (spriteSize * 1.55f / 100f);
+
+            NewRingImage("Back", ringRt, ringSprite, new Color(0.05f, 0.06f, 0.08f, 0.6f), false);
+            Image timeRing = NewRingImage("Time", ringRt, ringSprite, Color.white, true);
+            Image workRing = NewRingImage("Work", ringRt, ringSprite, new Color(1f, 0.82f, 0.15f), true);
+            workRing.fillAmount = 0f;
+
+            // Çember "UI" katmanında: polaroid foto kamerası bu katmanı çizmez (fotoğrafı kaplamasın)
+            int uiLayer = LayerMask.NameToLayer("UI");
+            foreach (Transform t in ringObj.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = uiLayer;
 
             SerializedObject markerSo = new SerializedObject(marker);
-            markerSo.FindProperty("countdownText").objectReferenceValue = countdown;
+            markerSo.FindProperty("timeRing").objectReferenceValue = timeRing;
+            markerSo.FindProperty("workRing").objectReferenceValue = workRing;
             markerSo.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(temp, prefabPath);
             Object.DestroyImmediate(temp);
             return saved.GetComponent<IncidentMarker>();
+        }
+
+        private static Image NewRingImage(string name, RectTransform parent, Sprite sprite, Color color, bool radial)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            Stretch((RectTransform)go.transform);
+            Image img = go.GetComponent<Image>();
+            img.sprite = sprite;
+            img.color = color;
+            img.raycastTarget = false;
+            if (radial)
+            {
+                img.type = Image.Type.Filled;
+                img.fillMethod = Image.FillMethod.Radial360;
+                img.fillOrigin = (int)Image.Origin360.Top;
+                img.fillClockwise = true;
+                img.fillAmount = 1f;
+            }
+            return img;
+        }
+
+        /// <summary>Kenarı yumuşatılmış beyaz halka (rozet çemberi).</summary>
+        private static Sprite GetOrCreateRingSprite()
+        {
+            EnsureFolder(FxDir);
+            string path = FxDir + "/ui_ring.png";
+            if (!System.IO.File.Exists(path))
+            {
+                const int Size = 128;
+                const float Outer = 62f, Inner = 50f;
+                Texture2D tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
+                    {
+                        float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(Size * 0.5f, Size * 0.5f));
+                        float a = Mathf.Clamp01(Outer - d) * Mathf.Clamp01(d - Inner);
+                        tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                    }
+                }
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+            }
+            return LoadSpriteAt(path, false);
+        }
+
+        // ==========================================
+        // YAĞIZ STİLİ PANEL GÖRSELLERİ (9-slice): düz Unity kutuları yerine
+        // ==========================================
+
+        /// <summary>
+        /// Yağız'ın HUD panelleriyle aynı dil: koyu gri dolgu (#3A3A3A), 2 px koyu çerçeve (#1E1E1E).
+        /// tan = Kaza Dosyasındaki ikon kutuları gibi yuvarlak köşeli açık kahve "çip".
+        /// </summary>
+        private static Sprite GetOrCreatePanelSprite(bool tanChip)
+        {
+            EnsureFolder(FxDir);
+            string path = FxDir + (tanChip ? "/ui_chip_tan.png" : "/ui_panel_dark.png");
+            if (!System.IO.File.Exists(path))
+            {
+                const int Size = 32;
+                Texture2D tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
+                Color fill = tanChip ? new Color32(214, 198, 160, 255) : new Color32(58, 58, 58, 255);
+                Color border = tanChip ? new Color32(190, 172, 132, 255) : new Color32(30, 30, 30, 255);
+                float radius = tanChip ? 7f : 0f;
+                for (int y = 0; y < Size; y++)
+                {
+                    for (int x = 0; x < Size; x++)
+                    {
+                        // Yuvarlak köşe (sadece çip)
+                        float cx = Mathf.Clamp(x + 0.5f, radius, Size - radius);
+                        float cy = Mathf.Clamp(y + 0.5f, radius, Size - radius);
+                        float corner = radius > 0f ? Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy)) : 0f;
+                        float alpha = radius > 0f ? Mathf.Clamp01(radius - corner + 0.5f) : 1f;
+
+                        bool edge = x < 2 || y < 2 || x >= Size - 2 || y >= Size - 2 || (radius > 0f && corner > radius - 2f);
+                        Color c = edge ? border : fill;
+                        c.a = alpha;
+                        tex.SetPixel(x, y, c);
+                    }
+                }
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+                AssetDatabase.ImportAsset(path);
+
+                TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.filterMode = FilterMode.Point;
+                importer.spriteBorder = tanChip ? new Vector4(9, 9, 9, 9) : new Vector4(4, 4, 4, 4);
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
+        /// <summary>Düz Image'ı Yağız stili 9-slice panele çevirir (2560 tasarım ölçeğinde çerçeve kalınlığı korunur).</summary>
+        private static void StylePanel(Image img, bool tanChip)
+        {
+            img.sprite = GetOrCreatePanelSprite(tanChip);
+            img.type = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = 1f;
+            img.color = Color.white;
         }
 
         // ==========================================
@@ -339,11 +454,16 @@ namespace ZeroHour.Phase2.Editor
 
             // Hız: orijinalin %72'si (%40 yavaşlatmanın üstüne %20 hızlandırma: 0.6 × 1.2);
             // filo: her kara aracından 4, helikopterden 3 (istasyonda klonlanır)
-            so.FindProperty("speedMultiplier").floatValue = 0.72f;
-            so.FindProperty("policeCount").intValue = 4;
-            so.FindProperty("ambulanceCount").intValue = 4;
-            so.FindProperty("fireTruckCount").intValue = 4;
-            so.FindProperty("helicopterCount").intValue = 3;
+            // Zorluk: kara araçları orijinalin %55'i hızında; helikopter tam hızda (yollardan bağımsız, ~2.5 kat hızlı
+            // ilk müdahaleci). Kıt filo: 3 polis, 3 ambulans, 3 itfaiye, 2 helikopter.
+            // Araçlar istasyonda görünmez bekler, sevk edilince doğar, dönünce kaybolur.
+            so.FindProperty("speedMultiplier").floatValue = 0.55f;
+            so.FindProperty("helicopterSpeedMultiplier").floatValue = 1f;
+            so.FindProperty("policeCount").intValue = 3;
+            so.FindProperty("ambulanceCount").intValue = 3;
+            so.FindProperty("fireTruckCount").intValue = 3;
+            so.FindProperty("helicopterCount").intValue = 2;
+            so.FindProperty("spawnOnDispatch").boolValue = true;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -995,6 +1115,7 @@ namespace ZeroHour.Phase2.Editor
                 float x0 = 430 + s * 255;
                 Image slotBg = NewImage($"HeliRoleSlot{s + 1}", panel, null, new Color(0.84f, 0.77f, 0.60f, 1f));
                 Place(slotBg.rectTransform, x0, heliRowY - 42, x0 + 240, heliRowY + 42);
+                StylePanel(slotBg, true); // Dosyadaki ikon kutularıyla aynı yuvarlak köşeli çip
                 slotBg.raycastTarget = false;
 
                 SerializedProperty slot = slots.GetArrayElementAtIndex(s);
@@ -1072,9 +1193,7 @@ namespace ZeroHour.Phase2.Editor
         {
             Image panel = NewImage("HUD_Shift", canvas, null, HudPanelColor);
             panel.raycastTarget = false;
-            Outline border = panel.gameObject.AddComponent<Outline>();
-            border.effectColor = HudBorderColor;
-            border.effectDistance = new Vector2(2f, -2f);
+            StylePanel(panel, false);
             RectTransform rt = panel.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
@@ -1089,9 +1208,7 @@ namespace ZeroHour.Phase2.Editor
 
             // Ayarlar dişlisi: vardiya panelinin sağında
             Image gearBg = NewImage("SettingsButton", canvas, null, HudPanelColor);
-            Outline gearBorder = gearBg.gameObject.AddComponent<Outline>();
-            gearBorder.effectColor = HudBorderColor;
-            gearBorder.effectDistance = new Vector2(2f, -2f);
+            StylePanel(gearBg, false);
             RectTransform gearRt = gearBg.rectTransform;
             gearRt.anchorMin = gearRt.anchorMax = new Vector2(0f, 1f);
             gearRt.pivot = new Vector2(0f, 1f);
@@ -1123,11 +1240,9 @@ namespace ZeroHour.Phase2.Editor
 
         private static void BuildTutorialHints(Transform canvas)
         {
-            Image bg = NewImage("TutorialHints", canvas, null, new Color(0.08f, 0.09f, 0.1f, 0.88f));
+            Image bg = NewImage("TutorialHints", canvas, null, HudPanelColor);
             bg.raycastTarget = false;
-            Outline border = bg.gameObject.AddComponent<Outline>();
-            border.effectColor = new Color(HudGreen.r, HudGreen.g, HudGreen.b, 0.6f);
-            border.effectDistance = new Vector2(1.5f, -1.5f);
+            StylePanel(bg, false);
             RectTransform rt = bg.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
             rt.pivot = new Vector2(0.5f, 0f);
@@ -1164,16 +1279,22 @@ namespace ZeroHour.Phase2.Editor
             Stretch(backdrop.rectTransform);
 
             Image panel = NewImage("Panel", root, null, HudPanelColor);
+            StylePanel(panel, false);
             panel.raycastTarget = true;
-            Outline border = panel.gameObject.AddComponent<Outline>();
-            border.effectColor = HudBorderColor;
-            border.effectDistance = new Vector2(3f, -3f);
             RectTransform rt = panel.rectTransform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.sizeDelta = new Vector2(1120, 760);
             rt.anchoredPosition = Vector2.zero;
             rt.localScale = Vector3.one * UiScale;
+
+            // Ayarlar paneli gibi başlık ve alt bant ayırıcı çizgileri
+            Image headerLine = NewImage("HeaderLine", rt, null, HudBorderColor);
+            Place(headerLine.rectTransform, 0, 128, 1120, 132);
+            headerLine.raycastTarget = false;
+            Image footerLine = NewImage("FooterLine", rt, null, HudBorderColor);
+            Place(footerLine.rectTransform, 0, 588, 1120, 592);
+            footerLine.raycastTarget = false;
 
             NewText("Title", rt, "SHIFT OVER · 05:00 AM", pixelFont, 44, HudHeader, 42, 36, 1078, 100, TextAlignmentOptions.Left);
             TMP_Text stats = NewText("Stats", rt, "Survivors 150 / 150", pixelFont, 40, HudLabel, 42, 160, 720, 560, TextAlignmentOptions.TopLeft);
