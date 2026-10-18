@@ -78,7 +78,7 @@ namespace ZeroHour.Phase2.Calls
                 timeLeftText.text = $"{left / 60}:{left % 60:00}";
                 timeLeftText.color = TimeLeft <= warningSeconds ? WarningColor : NormalColor;
             }
-            if (clockText != null) clockText.text = $"{GetClockTime()} AM";
+            if (clockText != null) clockText.text = Loc.Turkish ? GetClockTime() : $"{GetClockTime()} AM";
         }
 
         public void EndShift()
@@ -110,10 +110,10 @@ namespace ZeroHour.Phase2.Calls
             if (debriefStatsText != null)
             {
                 debriefStatsText.text =
-                    $"Survivors<pos=56%>{survivors} / {total}\n" +
-                    $"Rescued<pos=56%>{rescued}\n" +
-                    $"Lost<pos=56%>{lost}\n" +
-                    $"Survival<pos=56%>{rate:0}%";
+                    $"{Loc.T("Survivors")}<pos=56%>{survivors} / {total}\n" +
+                    $"{Loc.T("Rescued")}<pos=56%>{rescued}\n" +
+                    $"{Loc.T("Lost")}<pos=56%>{lost}\n" +
+                    $"{Loc.T("Survival")}<pos=56%>{rate:0}%";
             }
 
             if (debriefGradeText != null) debriefGradeText.text = Grade(rate);

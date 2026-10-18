@@ -38,6 +38,8 @@ namespace ZeroHour.Phase2.Calls
         public string incidentTitle;
         public string address;
         public string streetShort;
+        public int streetIndex;
+        public int houseNumber;
         public string notes;
         public string possibleUnitsText; // Renkli "olası ekipler" satırı (Kaza Dosyası açıklamasında)
         public string callTime;

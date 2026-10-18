@@ -69,12 +69,6 @@ namespace ZeroHour.Phase2.Calls
         public event Action<IncidentReport> OnIncidentCreated;
         public event Action<IncidentReport> OnIncidentClosed;
 
-        // Kurum renkleri: itfaiye kırmızı, polis mavi, ambulans beyaz (krem kağıtta okunsun diye koyu zemin)
-        private const string FireTruckTag = "<color=#D63A2A>Fire Truck</color>";
-        private const string PoliceTag = "<color=#2563D9>Police</color>";
-        private const string AmbulanceTag = "<mark=#2A231BE6><color=#FFFFFF> Ambulance </color></mark>";
-        private const string HelicopterTag = "<color=#B98A00>Helicopter</color>";
-
         public int WaitingCount
         {
             get
@@ -194,7 +188,9 @@ namespace ZeroHour.Phase2.Calls
 
             Bounds bounds = CalculateBounds(building);
             CallIncidentKind kind = PickKind();
-            string street = Streets[UnityEngine.Random.Range(0, Streets.Length)];
+            int streetIndex = UnityEngine.Random.Range(0, Streets.Length);
+            int houseNumber = UnityEngine.Random.Range(2, 99);
+            string street = Streets[streetIndex];
             Vector2Int injuredRange = InjuredRangeFor(kind);
             int injured = UnityEngine.Random.Range(injuredRange.x, injuredRange.y + 1);
 
@@ -208,8 +204,10 @@ namespace ZeroHour.Phase2.Calls
                 markerAnchor = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z),
                 incidentTitle = TitleFor(kind),
                 possibleUnitsText = "Possible units: " + PossibleUnitsFor(kind),
-                address = $"{UnityEngine.Random.Range(2, 99)} {street}",
+                address = $"{houseNumber} {street}",
                 streetShort = ShortStreet(street),
+                streetIndex = streetIndex,
+                houseNumber = houseNumber,
                 notes = RandomNote(kind),
                 callTime = GetClockTime(),
                 line = UnityEngine.Random.Range(1, 5),
@@ -269,15 +267,48 @@ namespace ZeroHour.Phase2.Calls
 
         private static string PossibleUnitsFor(CallIncidentKind kind)
         {
+            // Kurum renkleri sabit, isimler seçili dilde
+            string fire = $"<color=#D63A2A>{Loc.T("Fire Truck")}</color>";
+            string police = $"<color=#2563D9>{Loc.T("Police")}</color>";
+            string ambulance = $"<mark=#2A231BE6><color=#FFFFFF> {Loc.T("Ambulance")} </color></mark>";
+            string heli = $"<color=#B98A00>{Loc.T("Helicopter")}</color>";
+
             switch (kind)
             {
-                case CallIncidentKind.Fire: return $"{FireTruckTag}, {AmbulanceTag}";
-                case CallIncidentKind.Collapse: return $"{AmbulanceTag}, {FireTruckTag}, {PoliceTag}";
-                case CallIncidentKind.GasExplosion: return $"{FireTruckTag}, {AmbulanceTag}, {PoliceTag}";
-                case CallIncidentKind.Flood: return $"{HelicopterTag}, {AmbulanceTag}, {FireTruckTag}";
-                default: return $"{PoliceTag}, {AmbulanceTag}";
+                case CallIncidentKind.Fire: return $"{fire}, {ambulance}";
+                case CallIncidentKind.Collapse: return $"{ambulance}, {fire}, {police}";
+                case CallIncidentKind.GasExplosion: return $"{fire}, {ambulance}, {police}";
+                case CallIncidentKind.Flood: return $"{heli}, {ambulance}, {fire}";
+                default: return $"{police}, {ambulance}";
             }
         }
+
+        // ==========================================
+        // YERELLEŞTİRİLMİŞ DOSYA METİNLERİ (Kaza Dosyası açılırken o anki dilde üretilir)
+        // ==========================================
+
+        private static readonly string[] StreetsTr =
+        {
+            "Meşe Sokak", "Sedir Caddesi", "Liman Yolu", "Ihlamur Sokak",
+            "Akçaağaç Caddesi", "İstasyon Yolu", "Değirmen Sokak", "Park Sokak"
+        };
+
+        private static readonly string[] StreetsTrShort =
+        {
+            "MEŞE SK.", "SEDİR CD.", "LİMAN YL.", "IHLAMUR SK.",
+            "AKÇAAĞAÇ CD.", "İSTASYON YL.", "DEĞİRMEN SK.", "PARK SK."
+        };
+
+        public static string LocalizedTitle(IncidentReport r) => Loc.T(r.incidentTitle);
+
+        public static string LocalizedNotes(IncidentReport r) =>
+            $"{Loc.T(r.notes)}\n<size=92%>{Loc.T("Possible units: ")}{PossibleUnitsFor(r.kind)}</size>";
+
+        public static string LocalizedAddress(IncidentReport r) =>
+            Loc.Turkish ? $"{StreetsTr[r.streetIndex]} No: {r.houseNumber}" : r.address;
+
+        public static string LocalizedStreetShort(IncidentReport r) =>
+            Loc.Turkish ? StreetsTrShort[r.streetIndex] : r.streetShort;
 
         private static string RandomNote(CallIncidentKind kind)
         {

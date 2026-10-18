@@ -96,7 +96,7 @@ namespace ZeroHour.Phase2.Calls
 
             if (Report.status == CallIncidentStatus.Responding)
             {
-                countdownText.text = "<mark=#0B0F14CC> EN ROUTE </mark>";
+                countdownText.text = $"<mark=#0B0F14CC> {Loc.T("EN ROUTE")} </mark>";
                 countdownText.color = CountdownEnRoute;
                 return;
             }
@@ -105,7 +105,7 @@ namespace ZeroHour.Phase2.Calls
             {
                 // Olay yerinde iş: kalan süre ekip sayısıyla kısalır
                 int left = Mathf.CeilToInt(Report.WorkSecondsLeft);
-                countdownText.text = $"<mark=#0B0F14CC> WORK {left / 60}:{left % 60:00} </mark>";
+                countdownText.text = $"<mark=#0B0F14CC> {Loc.T("WORK")} {left / 60}:{left % 60:00} </mark>";
                 countdownText.color = CountdownEnRoute;
                 if (spriteRenderer != null) spriteRenderer.color = Color.white;
                 return;

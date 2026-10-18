@@ -131,12 +131,14 @@ namespace ZeroHour.Phase2.Calls
         {
             RenderPipelineManager.beginCameraRendering += HideMarkersForPhoto;
             RenderPipelineManager.endCameraRendering += RestoreMarkersAfterPhoto;
+            Loc.Changed += HandleLanguageChanged;
         }
 
         private void OnDisable()
         {
             RenderPipelineManager.beginCameraRendering -= HideMarkersForPhoto;
             RenderPipelineManager.endCameraRendering -= RestoreMarkersAfterPhoto;
+            Loc.Changed -= HandleLanguageChanged;
         }
 
         // Polaroid'i olay rozetleri ve geri sayım kaplamasın: sadece foto kamerası çizerken gizle
@@ -184,13 +186,7 @@ namespace ZeroHour.Phase2.Calls
             UnitType defaultRole = report.HelicopterActsAsItself ? UnitType.Ambulance : report.RequiredUnit;
             foreach (HeliRoleSlot slot in heliRoleSlots) slot.role = defaultRole;
 
-            SetText(caseTabText, $"CASE #{report.caseNumber:0000}");
-            SetText(stampText, report.urgent ? "URGENT" : "ROUTINE");
-            SetText(incidentValueText, report.incidentTitle);
-            SetText(addressValueText, report.address);
-            SetText(affectedValueText, $"{report.affected} people · {report.injured} injured");
-            SetText(notesValueText, $"{report.notes}\n<size=92%>{report.possibleUnitsText}</size>");
-            SetText(photoCaptionText, $"{report.streetShort} · {report.callTime}");
+            FillTexts(report);
 
             foreach (UnitRow row in unitRows)
             {
@@ -200,6 +196,23 @@ namespace ZeroHour.Phase2.Calls
             root.SetActive(true);
             Refresh();
             StartCoroutine(TakePhoto(report));
+        }
+
+        /// <summary>Dosyanın metinleri seçili dilde (dil değişince açık dosya da yenilenir).</summary>
+        private void FillTexts(IncidentReport report)
+        {
+            SetText(caseTabText, Loc.F("CASE #{0:0000}", report.caseNumber));
+            SetText(stampText, Loc.T(report.urgent ? "URGENT" : "ROUTINE"));
+            SetText(incidentValueText, IncidentBoard.LocalizedTitle(report));
+            SetText(addressValueText, IncidentBoard.LocalizedAddress(report));
+            SetText(affectedValueText, Loc.F("{0} people · {1} injured", report.affected, report.injured));
+            SetText(notesValueText, IncidentBoard.LocalizedNotes(report));
+            SetText(photoCaptionText, $"{IncidentBoard.LocalizedStreetShort(report)} · {report.callTime}");
+        }
+
+        private void HandleLanguageChanged()
+        {
+            if (IsOpen && current != null) FillTexts(current);
         }
 
         public void Close()
@@ -258,9 +271,9 @@ namespace ZeroHour.Phase2.Calls
             RefreshHeliSlots(waiting && !current.HelicopterActsAsItself ? helisSelected : 0);
 
             string timeLeft = waiting
-                ? $" · {Mathf.CeilToInt(Mathf.Max(0f, current.timeRemaining))}s left"
-                : current.status == CallIncidentStatus.Working ? " · UNITS ON SCENE" : " · UNITS EN ROUTE";
-            SetText(callInfoText, $"Call {current.callTime} · Line {current.line}{timeLeft}");
+                ? Loc.F(" · {0}s left", Mathf.CeilToInt(Mathf.Max(0f, current.timeRemaining)))
+                : Loc.T(current.status == CallIncidentStatus.Working ? " · UNITS ON SCENE" : " · UNITS EN ROUTE");
+            SetText(callInfoText, Loc.F("Call {0} · Line {1}", current.callTime, current.line) + timeLeft);
 
             bool canDispatch = waiting && totalSelected > 0;
             if (dispatchButton != null) dispatchButton.interactable = canDispatch;

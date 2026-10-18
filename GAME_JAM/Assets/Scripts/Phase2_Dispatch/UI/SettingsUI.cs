@@ -212,6 +212,9 @@ namespace ZeroHour.Phase2.UI
             {
                 languageText.text = availableLanguages[currentLanguageIndex];
             }
+
+            // Oyundaki tüm metinleri seçili dile çevir (0 = ENGLISH, 1 = TÜRKÇE)
+            ZeroHour.Phase2.Calls.Loc.SetLanguage(currentLanguageIndex);
         }
 
         // --- TAM EKRAN FONKSİYONLARI ---

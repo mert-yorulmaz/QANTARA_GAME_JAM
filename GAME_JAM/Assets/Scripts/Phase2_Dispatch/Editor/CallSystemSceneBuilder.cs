@@ -143,6 +143,7 @@ namespace ZeroHour.Phase2.Editor
             BuildShiftHud(canvasObj.transform, shiftClock, settings);
             BuildDebrief(canvasObj.transform, shiftClock);
             settings.transform.SetAsLastSibling(); // Ayarlar her şeyin üstünde
+            LocalizeStaticTexts(canvasObj.transform);
 
             // 4. Kaydet
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -390,6 +391,38 @@ namespace ZeroHour.Phase2.Editor
                 legacy.SetActive(false);
                 Debug.Log("[ZeroHour] Eski 'Canvas' (anel_Units görselleri) pasif yapıldı, yeni HUD onun yerine geçti.");
             }
+        }
+
+        // ==========================================
+        // YERELLEŞTİRME (Ayarlar → Language: ENGLISH / TÜRKÇE)
+        // ==========================================
+
+        // Kod tarafından sürekli yazılan metinler (LocalizedText bunların üstüne yazmasın)
+        private static readonly HashSet<string> DynamicTextNames = new HashSet<string>
+        {
+            "Stamp", "CaseTab", "CallInfo", "Language", "Population", "TimeLeft", "Clock", "Stats", "Grade",
+            "PhotoCaption", "Value_Incident", "Value_Address", "Value_Affected", "Value_Notes"
+        };
+
+        private static void LocalizeStaticTexts(Transform canvas)
+        {
+            int count = 0;
+            foreach (TMP_Text t in canvas.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (DynamicTextNames.Contains(t.name) || !Loc.Has(t.text)) continue;
+
+                LocalizedText localized = t.gameObject.AddComponent<LocalizedText>();
+                SerializedObject so = new SerializedObject(localized);
+                so.FindProperty("english").stringValue = t.text;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                // Türkçe metin daha uzun olabilir: kutuya sığacak kadar küçülsün
+                t.enableAutoSizing = true;
+                t.fontSizeMax = t.fontSize;
+                t.fontSizeMin = Mathf.Max(10f, t.fontSize * 0.55f);
+                count++;
+            }
+            Debug.Log($"[ZeroHour] {count} sabit UI yazısı yerelleştirildi (ENGLISH / TÜRKÇE).");
         }
 
         // ==========================================
@@ -1071,6 +1104,10 @@ namespace ZeroHour.Phase2.Editor
             gearIcon.preserveAspect = true;
             gearIcon.raycastTarget = false;
             UnityEditor.Events.UnityEventTools.AddPersistentListener(gearButton.onClick, settings.OpenSettings);
+
+            // HUD öğeleri en altta çizilsin: Kaza Dosyası, karne ve ayarlar bunların üstünde kalır
+            gearBg.transform.SetAsFirstSibling();
+            panel.transform.SetAsFirstSibling();
 
             SerializedObject so = new SerializedObject(clock);
             so.FindProperty("shiftDurationSeconds").floatValue = 180f;
