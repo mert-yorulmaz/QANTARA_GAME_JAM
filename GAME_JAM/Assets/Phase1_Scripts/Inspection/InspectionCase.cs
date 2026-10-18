@@ -198,6 +198,8 @@ public static class InspectionRules
         return c.groundUse == GroundUse.Residential ? "Not required" : "Missing";
     }
 
+    // Mesai 3 dosya: temiz (onay), rüşvetli çoklu ihlal, X-RAY'de gizli çatlak.
+    // (Yıldız Market -> 2.2 ve Çınar Towers -> 1.1 · 1.2 · 3.1 dosyaları kısalık için çıkarıldı.)
     public static List<InspectionCase> DefaultCases()
     {
         return new List<InspectionCase>
@@ -209,13 +211,6 @@ public static class InspectionRules
                 groundUse = GroundUse.Residential, notes = "Routine inspection. Tenants cooperative.",
                 photoSeed = 11, fireExtinguishers = 2
             },
-            // Ticari zemin kat, ek rapor yok -> 2.2
-            new InspectionCase
-            {
-                building = "Yıldız Market Building", address = "8 Bağdat Avenue", filed = "11 Jan 2026",
-                groundUse = GroundUse.Market, notes = "Ground floor rented to a supermarket chain.",
-                photoSeed = 23, fireExtinguishers = 1
-            },
             // Kesik kolon, kilitli çıkış, eksik çanta, rüşvet -> 2.1 · 3.2 · 3.3 · 4.1
             new InspectionCase
             {
@@ -225,14 +220,6 @@ public static class InspectionRules
                 exits = ExitStatus.Locked, attached = Attachment.EnvelopeWithCash,
                 photoSeed = 37, damage = DamageType.CutColumn, damageColumn = 1, damageFloor = 1,
                 fireExtinguishers = 1
-            },
-            // Eski rapor, mühür yok, tüp yok -> 1.1 · 1.2 · 3.1 (mimar mektubu rüşvet değil)
-            new InspectionCase
-            {
-                building = "Çınar Towers", address = "3 Linden Road", filed = "14 Jun 2025",
-                groundUse = GroundUse.Residential, notes = "Management requests a quick approval before the sale.",
-                seal = false, attached = Attachment.ArchitectLetter,
-                photoSeed = 41, fireExtinguishers = 0
             },
             // Belgeler kusursuz ama X-RAY'de büyük çatlak -> 2.1
             new InspectionCase
