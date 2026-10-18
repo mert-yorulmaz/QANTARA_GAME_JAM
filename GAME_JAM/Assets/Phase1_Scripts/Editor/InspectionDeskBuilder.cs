@@ -401,7 +401,7 @@ public static class InspectionDeskBuilder
             "• Use X-RAY SCAN on every file. Damage is not always declared.\n" +
             "• The Rule Book folder holds the full regulations (press R).\n\n" +
             "• Click every field on a file to check it against its rule. You can only approve or reject once every field and the X-RAY are checked.\n\n" +
-            "When the bell rings, leave your desk and go to the door. Your night shift starts right after.\n\n" +
+            "When the bell rings, leave your desk and go to the crisis monitor on the wall. Your night shift starts right after.\n\n" +
             "— BIA Management";
         UIFactory.Text("Memo", client, medium, 15f, UIFactory.Ink, memo, 0f, 4f, 500f, 326f, TextAlignmentOptions.TopLeft, true);
     }

@@ -472,8 +472,8 @@ public class InspectionDesk : MonoBehaviour
     void EndShift()
     {
         rejectionSlip.Close();
-        ShowSummary("SHIFT OVER", "The bell has rung. Your night shift is next. Go to the door.");
-        desktop.Notify($"Shift over · {clock.TimeText}", "The bell has rung. Your night shift is next. Leave your desk and go to the door.");
+        ShowSummary("SHIFT OVER", "The bell has rung. Your night shift is next. Go to the crisis monitor on the wall.");
+        desktop.Notify($"Shift over · {clock.TimeText}", "The bell has rung. Your night shift is next. Leave your desk and go to the crisis monitor on the wall.");
     }
 
     void ShowSummary(string heading, string message)

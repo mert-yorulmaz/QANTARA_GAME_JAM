@@ -655,3 +655,24 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 ## ⚠️ Bilinmesi Gerekenler
 - Dil ayarı şimdilik yalnızca Faz 2'yi çevirir; Faz 1'in metinleri İngilizce (Faz 1'de çeviri sistemi yok).
 - Müzik kaydırıcısı kaydediliyor ama henüz müzik yok.
+
+---
+
+# 🔄 GÜNCELLEME 10.3 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 10.3"TÜR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz1-merge` branch'inde commit'lendi, `main`'e birleştirilmedi, push edilmedi.
+
+## ✅ Gece vardiyasına geçiş artık duvardaki kriz monitöründen
+- Mesai boyunca monitör **kapalı** (siyah parlak ekran). Eski "Kriz Masası" resmi monitörden kaldırıldı (`PHOTOS/kriz_masasi.jpeg` silinmedi).
+- Zil çalınca monitör eski bir ekran gibi titreyerek **açılır**, ekranda gece vardiyasının şehri görünür. Görüntü (`TEXTURES/CrisisMonitor_NightCity.png`) Faz 2'nin açılış kamerasından alındı.
+- Monitöre bakınca: mesai bitmeden "Crisis desk opens at 17:00", bittikten sonra **"[E] Start the night shift"**. E'ye basınca kamera ekrana doğru kayar, ekran görüntüyü tam doldurur (Faz 2'nin açılış kadrajıyla aynı), kısa kararma, Faz 2 yüklenir. Görev kutusu geçişte gizlenir.
+- Yeni script: `Phase1_Scripts/Inspection/CrisisMonitorExit.cs` (`TV_Apt_01` objesinde). Materyaller: `TEXTURES/CrisisMonitor_Off.mat`, `CrisisMonitor_On.mat`.
+- Kapı (`DoorExit`) kapatıldı: artık sadece kapı. Script silinmedi; gerekirse açılıp yedek çıkış olarak kullanılabilir.
+- Yönlendirmeler güncellendi: görev listesi ("Look at the crisis monitor on the wall and press E"), mesai sonu bildirimi ve sabah notu "kapı" yerine "kriz monitörü" diyor.
+- Ek maliyet yok: aynı anda yine tek sahne çalışıyor.
+
+## 🧪 Test
+- Mesai boyunca monitör kapalı; mesai bitince açıldı, görev ve "[E] Start the night shift" yazısı doğru.
+- Monitöre giriş tetiklendi → kamera ekranı doldurdu → Faz 2 yüklendi (~2 sn), imleç serbest, hata yok.
+- Gerçek E tuşu MCP ile gönderilemedi → monitöre bakıp E'ye basmak elle denenmeli.

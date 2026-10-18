@@ -17,6 +17,8 @@ public class TaskTracker : MonoBehaviour
     public Win7Window caseWindow;
     public Win7Window ruleBookWindow;
     public DoorExit door;
+    [Tooltip("Gece vardiyasına geçiş: duvardaki kriz monitörü (atanmışsa kapının yerine geçer).")]
+    public CrisisMonitorExit monitor;
     [Tooltip("Oturunca açılan bilgisayar ekranı (ComputerPanel).")]
     public GameObject computerScreen;
 
@@ -56,8 +58,12 @@ public class TaskTracker : MonoBehaviour
         Add("Open the Rule Book folder to check the rules", ruleBookOpened || over);
         Add($"Review every case file ({reviewed}/{total})", reviewed >= total || over);
         Add("Wait for the bell at 17:00", over);
-        Add(atComputer ? "Press E to stand up, then go to the door for your night shift" : "Walk to the door and press E to head to the night shift",
-            door != null && door.HasLeft);
+        if (monitor != null)
+            Add(atComputer ? "Press E to stand up, then go to the crisis monitor on the wall" : "Look at the crisis monitor on the wall and press E",
+                monitor.HasLeft);
+        else
+            Add(atComputer ? "Press E to stand up, then go to the door for your night shift" : "Walk to the door and press E to head to the night shift",
+                door != null && door.HasLeft);
 
         // Sesler: görev tamamlandı, sandalyeye oturma / kalkma.
         int done = 0;
