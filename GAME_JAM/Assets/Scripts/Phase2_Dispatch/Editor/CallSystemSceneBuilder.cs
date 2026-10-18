@@ -69,6 +69,7 @@ namespace ZeroHour.Phase2.Editor
             SetupFleetTester();
             EnsureEventSystem();
             DisableLegacyCanvas();
+            List<Transform> stationBuildings = BuildStationBeacons(markerPrefab.GetComponent<SpriteRenderer>().sharedMaterial);
 
             GameObject systemObj = FindRoot(CommandSystemName);
             if (systemObj == null)
@@ -87,12 +88,26 @@ namespace ZeroHour.Phase2.Editor
             boardSo.FindProperty("markerPrefab").objectReferenceValue = markerPrefab;
             boardSo.FindProperty("fireMarkerSprite").objectReferenceValue = fireMarker;
             boardSo.FindProperty("collapseMarkerSprite").objectReferenceValue = collapseMarker;
+            boardSo.FindProperty("unattendedTimeout").floatValue = 45f;
+            boardSo.FindProperty("respondingTimeout").floatValue = 60f;
+            boardSo.FindProperty("maxActiveIncidents").intValue = 3;
+            SerializedProperty excluded = boardSo.FindProperty("excludedBuildings");
+            excluded.arraySize = stationBuildings.Count;
+            for (int i = 0; i < stationBuildings.Count; i++) excluded.GetArrayElementAtIndex(i).objectReferenceValue = stationBuildings[i];
             boardSo.ApplyModifiedPropertiesWithoutUndo();
 
             AudioSource callAudio = GetOrAdd<AudioSource>(systemObj);
             callAudio.playOnAwake = false;
             callAudio.spatialBlend = 0f;
             IncomingCallController calls = GetOrAdd<IncomingCallController>(systemObj);
+
+            // Çağrılar üst üste gelmesin: 20–30 sn arayla, bekleyen her olay için +6 sn
+            SerializedObject callTimingSo = new SerializedObject(calls);
+            callTimingSo.FindProperty("firstCallDelay").floatValue = 4f;
+            callTimingSo.FindProperty("minInterval").floatValue = 20f;
+            callTimingSo.FindProperty("maxInterval").floatValue = 30f;
+            callTimingSo.FindProperty("extraDelayPerWaitingIncident").floatValue = 6f;
+            callTimingSo.ApplyModifiedPropertiesWithoutUndo();
 
             // 3. Canvas
             GameObject oldCanvas = FindRoot(CanvasName);
@@ -129,8 +144,19 @@ namespace ZeroHour.Phase2.Editor
 
         private static Sprite LoadSprite(string fileName)
         {
-            string path = UiDir + fileName;
+            return LoadSpriteAt(UiDir + fileName, false);
+        }
+
+        private static Sprite LoadSpriteAt(string path, bool pixelArt)
+        {
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer != null && pixelArt && importer.filterMode != FilterMode.Point)
+            {
+                // README: 05_sprites piksel simgeleri Point filtre ile import edilmeli
+                importer.filterMode = FilterMode.Point;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.SaveAndReimport();
+            }
             if (importer == null)
             {
                 Debug.LogWarning($"[ZeroHour] UI görseli bulunamadı: {path}");
@@ -207,7 +233,25 @@ namespace ZeroHour.Phase2.Editor
             sr.sprite = defaultSprite;
             SphereCollider col = temp.AddComponent<SphereCollider>();
             col.isTrigger = true;
-            temp.AddComponent<IncidentMarker>();
+            IncidentMarker marker = temp.AddComponent<IncidentMarker>();
+
+            // Rozetin üstündeki geri sayım ("0:45" / "EN ROUTE"). Altta olursa çatının içinde kalıp görünmüyordu.
+            float spriteSize = defaultSprite != null ? Mathf.Max(defaultSprite.bounds.size.x, defaultSprite.bounds.size.y) : 1f;
+            GameObject countdownObj = new GameObject("Countdown");
+            countdownObj.transform.SetParent(temp.transform, false);
+            countdownObj.transform.localPosition = new Vector3(0f, spriteSize * 0.95f, 0f);
+            TextMeshPro countdown = countdownObj.AddComponent<TextMeshPro>();
+            if (pixelFont != null) countdown.font = pixelFont;
+            countdown.text = "0:45";
+            countdown.fontSize = 5.2f * spriteSize;
+            countdown.alignment = TextAlignmentOptions.Center;
+            countdown.textWrappingMode = TextWrappingModes.NoWrap;
+            countdown.rectTransform.sizeDelta = new Vector2(spriteSize * 3f, spriteSize * 0.8f);
+            countdownObj.GetComponent<MeshRenderer>().sortingOrder = 501;
+
+            SerializedObject markerSo = new SerializedObject(marker);
+            markerSo.FindProperty("countdownText").objectReferenceValue = countdown;
+            markerSo.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(temp, prefabPath);
             Object.DestroyImmediate(temp);
@@ -324,6 +368,154 @@ namespace ZeroHour.Phase2.Editor
                 legacy.SetActive(false);
                 Debug.Log("[ZeroHour] Eski 'Canvas' (anel_Units görselleri) pasif yapıldı, yeni HUD onun yerine geçti.");
             }
+        }
+
+        // ==========================================
+        // İSTASYON LOGOLARI (çatıda ince disk + kurum logosu)
+        // ==========================================
+
+        private struct StationDef
+        {
+            public string vehicleName;
+            public string logoFile;
+            public string label;
+            public Color color;
+        }
+
+        /// <summary>
+        /// Her acil durum aracının park ettiği yere en yakın binayı "istasyon binası" sayar,
+        /// çatısına kurum renginde ince bir disk ve üstüne logo koyar. İstasyon binalarını döndürür
+        /// (bu binalarda olay çıkmaz, böylece logo ile olay rozeti üst üste binmez).
+        /// </summary>
+        private static List<Transform> BuildStationBeacons(Material logoMaterial)
+        {
+            const string RootName = "[ZeroHour_StationBeacons]";
+            const float MaxStationDistance = 15f;
+
+            GameObject old = FindRoot(RootName);
+            if (old != null) Undo.DestroyObjectImmediate(old);
+
+            GameObject root = new GameObject(RootName);
+            Undo.RegisterCreatedObjectUndo(root, "Create Station Beacons");
+
+            StationDef[] defs =
+            {
+                new StationDef { vehicleName = "Vehicle_Police Car_separate", logoFile = "police_preview.png", label = "Police", color = new Color(0.25f, 0.50f, 1.00f) },
+                new StationDef { vehicleName = "Vehicle_Ambulance_separate", logoFile = "ambulance_preview.png", label = "Ambulance", color = new Color(0.95f, 0.95f, 0.95f) },
+                new StationDef { vehicleName = "Vehicle_Bus_color02_separate", logoFile = "fire_truck_preview.png", label = "FireTruck", color = new Color(0.92f, 0.25f, 0.18f) },
+                new StationDef { vehicleName = "HelicopterV2", logoFile = "helicopter_preview.png", label = "Helicopter", color = new Color(1.00f, 0.80f, 0.25f) },
+            };
+
+            List<Transform> stationBuildings = new List<Transform>();
+
+            foreach (StationDef def in defs)
+            {
+                GameObject vehicle = FindRoot(def.vehicleName);
+                Sprite logoSprite = LoadSpriteAt("Assets/UI/Dispatch_UI_Assets/05_sprites/" + def.logoFile, true);
+                if (vehicle == null || logoSprite == null)
+                {
+                    Debug.LogWarning($"[ZeroHour] İstasyon logosu atlandı ({def.label}): araç veya logo bulunamadı.");
+                    continue;
+                }
+
+                Vector3 home = vehicle.transform.position;
+                Transform building = FindNearestBuilding(home, MaxStationDistance, stationBuildings, out Bounds bounds, out float distance);
+
+                Vector3 anchor;
+                float diskDiameter;
+                if (building != null)
+                {
+                    // Çatı ortası; helikopter gibi çatıdaki araçlarda aracın ayak seviyesi
+                    anchor = new Vector3(bounds.center.x, Mathf.Max(bounds.max.y, home.y) + 0.05f, bounds.center.z);
+                    diskDiameter = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * 0.6f, 3f, 8f);
+                    stationBuildings.Add(building);
+                    Debug.Log($"[ZeroHour] İstasyon: {def.label} → {building.name} (araca {distance:0.0} m)");
+                }
+                else
+                {
+                    // Yakında uygun bina yoksa aracın park yerinin üstünde dur (yanlış binaya logo koyma)
+                    anchor = home + Vector3.up * 6f;
+                    diskDiameter = 4f;
+                    Debug.LogWarning($"[ZeroHour] {def.label} için {MaxStationDistance} m içinde boş bina yok; logo araç park yerinin üstüne kondu.");
+                }
+
+                GameObject beacon = new GameObject($"Station_{def.label}");
+                beacon.transform.SetParent(root.transform, false);
+                beacon.transform.position = anchor;
+
+                GameObject disk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                disk.name = "Disk";
+                Object.DestroyImmediate(disk.GetComponent<Collider>()); // tıklama / NavMesh etkilenmesin
+                disk.transform.SetParent(beacon.transform, false);
+                disk.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+                disk.transform.localScale = new Vector3(diskDiameter, 0.04f, diskDiameter);
+                MeshRenderer diskRenderer = disk.GetComponent<MeshRenderer>();
+                diskRenderer.sharedMaterial = GetOrCreateUnlitMaterial($"StationDisk_{def.label}", def.color);
+                diskRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                diskRenderer.receiveShadows = false;
+
+                GameObject logoObj = new GameObject("Logo");
+                logoObj.transform.SetParent(beacon.transform, false);
+                SpriteRenderer logo = logoObj.AddComponent<SpriteRenderer>();
+                logo.sprite = logoSprite;
+                logo.sharedMaterial = logoMaterial;
+                logo.sortingOrder = 400;
+
+                StationBeacon component = beacon.AddComponent<StationBeacon>();
+                SerializedObject so = new SerializedObject(component);
+                so.FindProperty("logo").objectReferenceValue = logo;
+                so.FindProperty("disk").objectReferenceValue = disk.transform;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            return stationBuildings;
+        }
+
+        private static Transform FindNearestBuilding(Vector3 point, float maxDistance, List<Transform> alreadyUsed, out Bounds bestBounds, out float bestDistance)
+        {
+            Transform best = null;
+            bestBounds = default;
+            bestDistance = float.MaxValue;
+
+            foreach (GameObject go in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                if (!go.activeInHierarchy || !go.name.StartsWith("Building")) continue;
+                if (alreadyUsed.Contains(go.transform)) continue; // iki kurum aynı binaya konmaz
+
+                Renderer[] renderers = go.GetComponentsInChildren<Renderer>();
+                if (renderers.Length == 0) continue;
+                Bounds b = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+
+                Vector3 closest = b.ClosestPoint(point);
+                closest.y = point.y;
+                float d = Vector3.Distance(closest, point);
+                if (d < bestDistance)
+                {
+                    best = go.transform;
+                    bestBounds = b;
+                    bestDistance = d;
+                }
+            }
+
+            return bestDistance <= maxDistance ? best : null;
+        }
+
+        private static Material GetOrCreateUnlitMaterial(string name, Color color)
+        {
+            string path = $"{PrefabDir}/{name}.mat";
+            Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) shader = Shader.Find("Unlit/Color");
+                mat = new Material(shader) { name = name };
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+            EditorUtility.SetDirty(mat);
+            return mat;
         }
 
         // ==========================================
@@ -491,7 +683,6 @@ namespace ZeroHour.Phase2.Editor
 
             // Tablo başlığı
             NewText("Header_Unit", panel, "UNIT", pixelFont, 32, InkMuted, 71, 640, 400, 686, TextAlignmentOptions.Left);
-            NewText("Header_Distance", panel, "DISTANCE", pixelFont, 32, InkMuted, 964, 640, 1200, 686, TextAlignmentOptions.Left);
             NewText("Header_Free", panel, "FREE", pixelFont, 32, InkMuted, 1222, 640, 1400, 686, TextAlignmentOptions.Left);
             NewText("Header_Send", panel, "SEND", pixelFont, 32, InkMuted, 1410, 640, 1710, 686, TextAlignmentOptions.Center);
 
@@ -507,7 +698,6 @@ namespace ZeroHour.Phase2.Editor
             {
                 float yc = 741 + i * 106;
                 NewText($"Row{i}_Name", panel, rowNames[i], readFont, 36, Ink, 163, yc - 30, 700, yc + 30, TextAlignmentOptions.Left);
-                TMP_Text distance = NewText($"Row{i}_Distance", panel, "NEAR", pixelFont, 40, Ink, 964, yc - 30, 1190, yc + 30, TextAlignmentOptions.Left);
                 TMP_Text free = NewText($"Row{i}_Free", panel, "1", pixelFont, 40, Ink, 1222, yc - 30, 1335, yc + 30, TextAlignmentOptions.Left);
 
                 Button minus = NewButton($"Row{i}_Minus", panel, 1425, yc - 43, 1511, yc + 43);
@@ -518,7 +708,7 @@ namespace ZeroHour.Phase2.Editor
 
                 SerializedProperty row = rows.GetArrayElementAtIndex(i);
                 row.FindPropertyRelative("unitType").enumValueIndex = (int)rowTypes[i];
-                row.FindPropertyRelative("distanceText").objectReferenceValue = distance;
+                row.FindPropertyRelative("distanceText").objectReferenceValue = null; // DISTANCE sütunu kaldırıldı; olası ekipler açıklamada
                 row.FindPropertyRelative("freeText").objectReferenceValue = free;
                 row.FindPropertyRelative("countText").objectReferenceValue = count;
                 row.FindPropertyRelative("minusButton").objectReferenceValue = minus;

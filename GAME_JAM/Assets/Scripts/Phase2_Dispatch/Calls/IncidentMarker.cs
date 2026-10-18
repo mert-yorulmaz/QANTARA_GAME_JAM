@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 namespace ZeroHour.Phase2.Calls
@@ -22,6 +23,13 @@ namespace ZeroHour.Phase2.Calls
         [Header("Aciliyet Nabzı")]
         [Tooltip("Kalan süre bunun altına inince rozet nabız gibi atar")]
         [SerializeField] private float urgentPulseBelowSeconds = 15f;
+
+        [Header("Geri Sayım (rozetin üstünde)")]
+        [SerializeField] private TMP_Text countdownText;
+
+        private static readonly Color CountdownNormal = Color.white;
+        private static readonly Color CountdownUrgent = new Color(1f, 0.32f, 0.25f);
+        private static readonly Color CountdownEnRoute = new Color(0.47f, 0.88f, 0.69f);
 
         private SpriteRenderer spriteRenderer;
         private float spriteWorldSize = 1f;
@@ -78,6 +86,24 @@ namespace ZeroHour.Phase2.Calls
             float speed = Report.status == CallIncidentStatus.Responding ? bobSpeed * 0.4f : bobSpeed;
             float bob = Mathf.Sin((Time.time + bobOffset) * speed) * bobAmplitude * worldSize;
             transform.position = Report.markerAnchor + Vector3.up * (worldSize * 0.6f + bob);
+
+            UpdateCountdown();
+        }
+
+        private void UpdateCountdown()
+        {
+            if (countdownText == null) return;
+
+            if (Report.status == CallIncidentStatus.Responding)
+            {
+                countdownText.text = "<mark=#0B0F14CC> EN ROUTE </mark>";
+                countdownText.color = CountdownEnRoute;
+                return;
+            }
+
+            int seconds = Mathf.CeilToInt(Mathf.Max(0f, Report.timeRemaining));
+            countdownText.text = $"<mark=#0B0F14CC> {seconds / 60}:{seconds % 60:00} </mark>";
+            countdownText.color = Report.timeRemaining < urgentPulseBelowSeconds ? CountdownUrgent : CountdownNormal;
         }
     }
 }

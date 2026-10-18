@@ -23,8 +23,10 @@ namespace ZeroHour.Phase2.Calls
 
         [Header("Zamanlama")]
         [SerializeField] private float firstCallDelay = 4f;
-        [SerializeField] private float minInterval = 10f;
-        [SerializeField] private float maxInterval = 15f;
+        [SerializeField] private float minInterval = 20f;
+        [SerializeField] private float maxInterval = 30f;
+        [Tooltip("Haritada ekip bekleyen her olay için bir sonraki çağrıya eklenen süre (sn)")]
+        [SerializeField] private float extraDelayPerWaitingIncident = 6f;
         [Tooltip("Bu kadar süre açılmayan çağrı cevapsız sayılır")]
         [SerializeField] private float ringTimeout = 12f;
         [SerializeField] private float listenDuration = 3f;
@@ -71,8 +73,10 @@ namespace ZeroHour.Phase2.Calls
                     timer -= Time.deltaTime;
                     if (timer <= 0f)
                     {
-                        // Haritada boş bina / kapasite yoksa çağrıyı biraz ertele
-                        if (IncidentBoard.Instance != null && IncidentBoard.Instance.CanCreateIncident()) StartRinging();
+                        // Kaza dosyası açıkken telefon çalmaz; kapasite / boş bina yoksa çağrı ertelenir
+                        bool fileOpen = IncidentFileUI.Instance != null && IncidentFileUI.Instance.IsOpen;
+                        bool canCreate = IncidentBoard.Instance != null && IncidentBoard.Instance.CanCreateIncident();
+                        if (!fileOpen && canCreate) StartRinging();
                         else timer = 3f;
                     }
                     break;
@@ -158,7 +162,8 @@ namespace ZeroHour.Phase2.Calls
         private void EndCall()
         {
             state = CallState.Idle;
-            timer = Random.Range(minInterval, maxInterval);
+            int waiting = IncidentBoard.Instance != null ? IncidentBoard.Instance.WaitingCount : 0;
+            timer = Random.Range(minInterval, maxInterval) + waiting * extraDelayPerWaitingIncident;
 
             audioSource.Stop();
             ShowCard(ringingCard, false);

@@ -23,13 +23,17 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private Sprite collapseMarkerSprite;
 
         [Header("Olay Kuralları")]
-        [Tooltip("Ekip gönderilmezse bu süre sonunda yaralılar kaybedilir (sn)")]
-        [SerializeField] private float unattendedTimeout = 60f;
+        [Tooltip("Ekip gönderilmezse bu süre sonunda yaralılar kaybedilir ve rozet kalkar (sn)")]
+        [SerializeField] private float unattendedTimeout = 45f;
+        [Tooltip("Ekip yola çıktıktan sonra bu süre içinde varamazsa olay yine de kapanır (rozet takılı kalmasın)")]
+        [SerializeField] private float respondingTimeout = 60f;
         [SerializeField] private int minInjured = 2;
         [SerializeField] private int maxInjured = 8;
-        [SerializeField] private int maxActiveIncidents = 5;
+        [SerializeField] private int maxActiveIncidents = 3;
         [Tooltip("Olay adayı bina kök objelerinin ad öneki")]
         [SerializeField] private string buildingNamePrefix = "Building";
+        [Tooltip("Olay çıkmayacak binalar (istasyon binaları: üstlerinde kurum logosu var)")]
+        [SerializeField] private List<Transform> excludedBuildings = new List<Transform>();
 
         [Header("Vardiya Saati")]
         [Tooltip("Gerçek 1 saniye = oyunda kaç dakika")]
@@ -44,6 +48,24 @@ namespace ZeroHour.Phase2.Calls
 
         public event Action<IncidentReport> OnIncidentCreated;
         public event Action<IncidentReport> OnIncidentClosed;
+
+        // Kurum renkleri: itfaiye kırmızı, polis mavi, ambulans beyaz (krem kağıtta okunsun diye koyu zemin)
+        private const string FireTruckTag = "<color=#D63A2A>Fire Truck</color>";
+        private const string PoliceTag = "<color=#2563D9>Police</color>";
+        private const string AmbulanceTag = "<mark=#2A231BE6><color=#FFFFFF> Ambulance </color></mark>";
+
+        public int WaitingCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (IncidentReport r in activeIncidents)
+                {
+                    if (r.status == CallIncidentStatus.Waiting) count++;
+                }
+                return count;
+            }
+        }
 
         private static readonly string[] Streets =
         {
@@ -99,6 +121,7 @@ namespace ZeroHour.Phase2.Calls
                 if (t.parent != null || !t.gameObject.activeInHierarchy) continue;
                 if (!t.name.StartsWith(buildingNamePrefix)) continue;
                 if (t.GetComponentInChildren<Renderer>() == null) continue;
+                if (excludedBuildings.Contains(t)) continue;
                 candidateBuildings.Add(t);
             }
         }
@@ -138,7 +161,10 @@ namespace ZeroHour.Phase2.Calls
                 buildingBounds = bounds,
                 sitePosition = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z),
                 markerAnchor = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z),
-                incidentTitle = kind == CallIncidentKind.Fire ? "Residential fire" : "Structural collapse",
+                incidentTitle = kind == CallIncidentKind.Fire ? "Residential fire" : "Earthquake collapse",
+                possibleUnitsText = kind == CallIncidentKind.Fire
+                    ? $"Possible units: {FireTruckTag}, {AmbulanceTag}"
+                    : $"Possible units: {AmbulanceTag}, {FireTruckTag}, {PoliceTag}",
                 address = $"{UnityEngine.Random.Range(2, 99)} {street}",
                 streetShort = ShortStreet(street),
                 notes = kind == CallIncidentKind.Fire
@@ -149,7 +175,8 @@ namespace ZeroHour.Phase2.Calls
                 injured = injured,
                 affected = injured + UnityEngine.Random.Range(2, 7),
                 urgent = injured >= 5,
-                timeRemaining = unattendedTimeout
+                timeRemaining = unattendedTimeout,
+                timeLimit = unattendedTimeout
             };
 
             if (markerPrefab != null)
@@ -208,6 +235,14 @@ namespace ZeroHour.Phase2.Calls
             for (int i = activeIncidents.Count - 1; i >= 0; i--)
             {
                 IncidentReport r = activeIncidents[i];
+
+                if (r.status == CallIncidentStatus.Responding)
+                {
+                    // Güvence: ekip yolda takılırsa rozet sonsuza kadar kalmasın
+                    r.respondingTime += Time.deltaTime;
+                    if (r.respondingTime >= respondingTimeout) ResolveIncident(r);
+                    continue;
+                }
                 if (r.status != CallIncidentStatus.Waiting) continue;
 
                 r.timeRemaining -= Time.deltaTime;

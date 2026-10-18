@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 using ZeroHour.Phase2.Data;
 using ZeroHour.Phase2.Units;
@@ -70,6 +71,7 @@ namespace ZeroHour.Phase2.Calls
         private IncidentReport current;
         private Camera photoCamera;
         private RenderTexture photoTexture;
+        private readonly List<Renderer> hiddenForPhoto = new List<Renderer>();
 
         public bool IsOpen => root != null && root.activeSelf;
 
@@ -97,6 +99,47 @@ namespace ZeroHour.Phase2.Calls
             if (photoTexture != null) photoTexture.Release();
         }
 
+        private void OnEnable()
+        {
+            RenderPipelineManager.beginCameraRendering += HideMarkersForPhoto;
+            RenderPipelineManager.endCameraRendering += RestoreMarkersAfterPhoto;
+        }
+
+        private void OnDisable()
+        {
+            RenderPipelineManager.beginCameraRendering -= HideMarkersForPhoto;
+            RenderPipelineManager.endCameraRendering -= RestoreMarkersAfterPhoto;
+        }
+
+        // Polaroid'i olay rozetleri ve geri sayım kaplamasın: sadece foto kamerası çizerken gizle
+        private void HideMarkersForPhoto(ScriptableRenderContext context, Camera cam)
+        {
+            if (cam != photoCamera || IncidentBoard.Instance == null) return;
+
+            hiddenForPhoto.Clear();
+            foreach (IncidentReport r in IncidentBoard.Instance.ActiveIncidents)
+            {
+                if (r.marker == null) continue;
+                foreach (Renderer rend in r.marker.GetComponentsInChildren<Renderer>())
+                {
+                    if (!rend.enabled) continue;
+                    rend.enabled = false;
+                    hiddenForPhoto.Add(rend);
+                }
+            }
+        }
+
+        private void RestoreMarkersAfterPhoto(ScriptableRenderContext context, Camera cam)
+        {
+            if (cam != photoCamera) return;
+
+            foreach (Renderer rend in hiddenForPhoto)
+            {
+                if (rend != null) rend.enabled = true;
+            }
+            hiddenForPhoto.Clear();
+        }
+
         // ==========================================
         // AÇ / KAPAT
         // ==========================================
@@ -113,7 +156,7 @@ namespace ZeroHour.Phase2.Calls
             SetText(incidentValueText, report.incidentTitle);
             SetText(addressValueText, report.address);
             SetText(affectedValueText, $"{report.affected} people · {report.injured} injured");
-            SetText(notesValueText, report.notes);
+            SetText(notesValueText, $"{report.notes}\n<size=92%>{report.possibleUnitsText}</size>");
             SetText(photoCaptionText, $"{report.streetShort} · {report.callTime}");
 
             foreach (UnitRow row in unitRows)

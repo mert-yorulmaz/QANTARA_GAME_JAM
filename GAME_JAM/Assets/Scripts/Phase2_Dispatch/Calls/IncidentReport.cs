@@ -35,6 +35,7 @@ namespace ZeroHour.Phase2.Calls
         public string address;
         public string streetShort;
         public string notes;
+        public string possibleUnitsText; // Renkli "olası ekipler" satırı (Kaza Dosyası açıklamasında)
         public string callTime;
         public int line;
 
@@ -42,6 +43,8 @@ namespace ZeroHour.Phase2.Calls
         public int injured;
         public bool urgent;
         public float timeRemaining;
+        public float timeLimit;
+        public float respondingTime;   // Ekip yola çıktıktan beri geçen süre (takılma güvencesi)
 
         public readonly List<UnitType> sentUnits = new List<UnitType>();
         public IncidentMarker marker;

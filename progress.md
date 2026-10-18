@@ -334,3 +334,37 @@ Denetim yöntemi: `git diff de543b3..HEAD` (oturum öncesi son commit → şimdi
 
 ### 📝 Sonuç
 Teknik kurallar (Faz 1, materyaller, NavMesh, asset silmeme, Input, UI çözünürlüğü, progress.md'ye sadece ekleme) **doğrulanarak** uyuldu. Asıl ihlal **git süreciyle** ilgili: prompt `main`'e push etme derken iki kez push edildi. Kullanıcının elle yapması gereken testler: gerçek fare tıklaması ve çağrı sesleri.
+
+---
+---
+
+# 🔄 GÜNCELLEME 4 — 18 Ekim 2026, ~04:00 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 4"TÜR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. Kullanıcının istediği 4 düzeltme yapıldı. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+
+## ✅ Yapılan 4 Düzeltme (Play Mode'da Test Edildi)
+
+1. **DISTANCE kaldırıldı → "olası ekipler" açıklamaya eklendi.** Kaza Dosyasındaki DISTANCE sütunu yok. NOTES altında renkli satır var:
+   - Yangın: `Possible units: Fire Truck, Ambulance`
+   - Deprem/çökme (başlık artık "Earthquake collapse"): `Possible units: Ambulance, Fire Truck, Police`
+   - Renkler: **itfaiye kırmızı, polis mavi, ambulans beyaz**. Kaza dosyası krem rengi olduğu için beyaz ambulans yazısının arkasına koyu zemin kondu (yoksa okunmuyordu).
+   - Oyun kuralı değişmedi: yangını itfaiye, çökmeyi ambulans çözer; listede ilk yazan gerekli ekiptir.
+2. **İstasyon logoları.** Her aracın park yerine en yakın binanın çatısına kurum renginde ince bir disk (silindir) ve üstüne kurumun logosu (`05_sprites/*_preview.png`) kondu. Logo kameraya bakar, ekranda sabit boyda kalır, hafifçe salınır.
+   - Yerleşim (kurulum loguyla doğrulandı): Polis → `Building_House_04_color03 (2)` (6.5 m), Ambulans → `Building Sky_small_color02 (4)` (9.5 m), İtfaiye → `Building_House_04_color01 (1)` (6.5 m), Helikopter → `Building Sky_big_color01 (2)` (helipad'li bina).
+   - **Mantık kontrolleri:** İki kurum aynı binaya konmaz. 15 m içinde bina yoksa logo yanlış binaya değil aracın park yerinin üstüne konur. **İstasyon binalarında olay çıkmaz** (61 adaydan 57'ye düştü), böylece logo ile olay rozeti üst üste binmez. Disk ve logoda collider yok (tıklamayı ve NavMesh'i etkilemez).
+   - Not: Sahnede gerçek hastane/karakol/itfaiye modeli yok; istasyon binaları araçların yanındaki sıradan binalardır.
+3. **Çağrılar üst üste gelmiyor.** Çağrılar arası 10–15 sn → **20–30 sn**, haritada ekip bekleyen her olay için **+6 sn**. Kaza dosyası açıkken telefon **çalmaz**. Aynı anda en fazla **3** aktif olay (5'ten düşürüldü). *Test: 0 olayla 26.9 sn, 2 olayla 38 sn; 3 olayda yeni çağrı yok; dosya açıkken çalmadı.*
+4. **Rozetlere süre.** Rozetin üstünde geri sayım (`0:45`), son 15 sn kırmızı ve rozet nabız gibi atar; ekip yoldayken `EN ROUTE`. Süre 60 → **45 sn**; dolunca yaralılar kaybedilir ve rozet kalkar. Ekip yolda takılırsa 60 sn sonra olay yine kapanır (rozet sonsuza kadar kalmaz). *Test: ikisi de rozeti kaldırdı.*
+
+## 🐞 Bu Turda Bulunup Düzeltilen
+- Polaroid fotoğrafını olay rozeti ve geri sayım kaplıyordu → rozetler sadece foto kamerası çizerken gizleniyor (ana ekranda titreme yok; test: fotoğraf sonrası rozetler geri geldi).
+- Geri sayım rozetin altındayken çatının içinde kalıp görünmüyordu → rozetin üstüne taşındı.
+
+## 🧾 Dosyalar
+- **Yeni:** `Calls/StationBeacon.cs`, `Prefabs/Calls/StationDisk_{Police,Ambulance,FireTruck,Helicopter}.mat`
+- **Değişen:** `IncidentBoard.cs`, `IncidentFileUI.cs`, `IncidentMarker.cs`, `IncidentReport.cs`, `IncomingCallController.cs`, `CallSystemSceneBuilder.cs`, `IncidentMarker.prefab`, `SampleScene.unity`, 4 logo görselinin import ayarı (Sprite + Point filtre, README'deki talimat), font atlasları (yeni karakterler)
+- **Doğrulama:** Derleme 0 hata. Sahnedeki mevcut materyal referansları değişmedi (sadece yeni logo/disk materyalleri eklendi).
+
+## ⚠️ Hâlâ Elle Test Edilmesi Gerekenler
+Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyarısı.
