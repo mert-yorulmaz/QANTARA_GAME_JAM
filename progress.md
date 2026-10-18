@@ -472,3 +472,40 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - MCP ekran görüntüleri soluk çıkıyor; efektlerin gerçek gece sahnesindeki görünümünü bir kez gözle kontrol edin.
 - Piksel fontta "İ" harfi küçük "i" gibi görünüyor (fontun kendisi).
 - Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, sesler (çağrı + afet sesleri).
+
+---
+---
+
+# 🔄 GÜNCELLEME 8 — 18 Ekim 2026, ~07:25 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 8"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi (`d728087`), `main`'e birleştirilmedi ve push edilmedi.
+> Kullanıcı eleştirileri: taktik derinlik yok / helikopterin anlamı kalmadı, UI "AI gibi", trafik sıkışıyor, oyun çok kolay (ilk denemede S), süre sayı olmasın çember olsun, araçlar baştan spawn olmasın, sesler çok uzun.
+
+## ✅ Yapılanlar (Play Mode'da Test Edildi)
+
+1. **Taktik derinlik — zamanla kayıp.** Yardım gelene kadar yaralılar ölebilir: ilk 5 sn güvenli, risk 25 sn içinde tam seviyeye çıkar (geç kalmak ağır cezalı, hızlı müdahale ödüllü). Olay yerinde işe yarayan ekip varken risk %30'a, helikopter varken %10'a düşer.
+2. **Helikopter = hızlı ilk müdahaleci.** Yollardan bağımsız, kara araçlarından ~2.5 kat hızlı (helikopter hız çarpanı 1.0, kara 0.55). Olay yerinde ölümleri neredeyse durdurur; yangında itfaiye rolündeyken **su bombası** (1.5x iş). Suyu / yakıtı **14 sn** yeter, sonra tek başına üsse döner. Tek başına yangını bitiremez (14 × 1.5 < 24) → "helikopter zaman kazandırır, itfaiye bitirir".
+3. **Takviye.** Olay kapanana kadar ekip gönderilebilir (önce helikopter, sonra kara ekibi). Takviyeler aynı olay yerindeki park kuyruğuna katılır. *Test (UI butonlarıyla): göçüğe helikopter 4. sn'de vardı, 14 sn çalışıp döndü (işin 14/30'u); takviye 2 ambulans → olay 40. sn'de çözüldü; aradaki boşlukta 2 kayıp.*
+4. **Süre çemberi (sayı yok).** Rozetin çevresinde beyaz süre yayı saat yönünde azalır (son %30 kırmızı + nabız). Ekip varınca aynı noktadan **sarı iş yayı** dolar; sarı tam tur atarsa çözülür, önce beyaz biterse kalan yaralılar kaybedilir. Süre artık bekleme + yol + iş hepsini kapsar (yangın 75, göçük 90, gaz 70, sel 85, yağma 60 sn). Çember polaroid fotoğrafa girmez.
+5. **Araçlar sevk edilince doğar.** Oyun başında hiçbir acil durum aracı görünmez. Sevk edilince istasyon noktasında doğar, dönünce kaybolur. Aynı tipteki araçlar aynı noktada doğup kaybolur; üst üste binmesinler diye kara araçları 2.2 sn, helikopterler 1.5 sn arayla çıkar. Ek helikopterler için çatı bulma mantığı kaldırıldı.
+6. **Trafik.** Radar artık sadece aynı yöne hareket eden araçlar ve aynı olay yerine sıraya giren araçlar için fren yapar; başka olay yerinde park etmiş / karşıdan gelen / duran araçların arasından NavMesh geçirir. Olay yerinden ayrılan araç kuyruktan çıkar, ayrılış aralığı 2 sn → 1.2 sn. *Test: 11 aracın hepsi tek olaya ve 3 ayrı olaya eşzamanlı → hepsi vardı ve döndü, takılma yok.*
+7. **Zorluk.** Kara araçları orijinalin %55'i hızında, filo **3 polis / 3 ambulans / 3 itfaiye / 2 helikopter**, not eşikleri S ≥98, A ≥93, B ≥85, C ≥75. *Test: anında tepki veren "sanal oyuncu" 2 dakikada 5 kayıp verip A aldı.*
+8. **Sesler kısa.** Telefon zili 5 sn sonra susar (kart yanıp sönmeye devam eder); çıtırtı / yağmur / alarm 4 sn çalıp söner; gürleme 3 → 1.6 sn, patlama 1.6 → 1.1 sn.
+9. **UI "AI gibi" durmasın.** Benim eklediğim düz Unity kutuları (vardiya paneli, dişli, ipucu bandı, karne, helikopter rol bölmeleri) Yağız'ın panel diline çekildi: koyu gri dolgu + koyu çerçeve (9-slice), karnede ayarlar paneli gibi başlık / alt bant çizgileri, rol bölmeleri dosyadaki ikon kutuları gibi yuvarlak köşeli çip. Standart Outline efektleri kaldırıldı.
+
+## 🐞 Test Sırasında Bulunup Düzeltilen
+- **Takviye gönderilemiyordu** (sevk sadece bekleyen olaylara açıktı) → olay kapanana kadar açık.
+- Polaroid fotoğrafında rozet çemberi görünüyordu → çember UI katmanında, foto kamerası çizmiyor.
+- Karnede Türkçe "Hayatta kalma" değerin üstüne biniyordu → "Sağ kalım", değer sütunu sağa.
+- Vardiya bitince ipucu bandı karnenin altında kalıyordu → gizleniyor.
+- İlk ölüm modeli çok sertti (yakın yangında bile 8'de 3 kayıp) → ilk saniyeler güvenli, kademeli risk.
+- Dosyadaki durum yazısı ("ekip yolda") helikopter döndükten sonra yanlış kalıyordu → gerçekte yolda / olay yerinde olan ekibe göre.
+
+## 🧪 Genel Test
+- Derleme 0 hata. 2 dakikalık sanal oyun (çağrılar açık, otomatik kabul + sevk): **0 hata, 0 uyarı**.
+- Kayıtlı dil tercihi Türkçe idi (oyunu denerken siz değiştirmişsiniz) — dokunulmadı.
+
+## ⚠️ Bilinmesi Gerekenler
+- Kuyruktaki son araç olay yerinden ayrıldıktan sonra gelen takviye, olay yerine varınca 1–2 sn içinde park eder (takılma kurtarıcısı üzerinden).
+- Hâlâ elle test edilmesi gerekenler: gerçek fare tıklaması, sesler.
