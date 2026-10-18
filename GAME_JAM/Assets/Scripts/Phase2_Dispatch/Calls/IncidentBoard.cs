@@ -293,7 +293,6 @@ namespace ZeroHour.Phase2.Calls
             if (CityStatsManager.Instance != null) CityStatsManager.Instance.AddCiviliansAtRisk(report.injured);
 
             Debug.Log($"<color=orange>[Incidents] 📍 Case #{report.caseNumber}: {report.incidentTitle} @ {building.name} ({report.injured} yaralı)</color>");
-            Feed(FeedTone.Alert, null, "New case #{0}: {1} · {2} injured", report.caseNumber, Loc.T(report.incidentTitle), report.injured);
             OnIncidentCreated?.Invoke(report);
 
             // Deprem / selden sonra aynı bölgeden "yağma var" ihbarı gelebilir
@@ -394,14 +393,17 @@ namespace ZeroHour.Phase2.Calls
             if (!scam && CityStatsManager.Instance != null) CityStatsManager.Instance.AddCiviliansAtRisk(report.injured);
 
             Debug.Log($"<color=orange>[Incidents] 📍 Case #{report.caseNumber}: takip ihbarı (#{report.originCaseNumber} sonrası, {(scam ? "ASILSIZ" : "gerçek")}) @ {building.name}</color>");
-            Feed(FeedTone.Alert, null, "Case #{0}: looting reported near case #{1} (unverified)", report.caseNumber, report.originCaseNumber);
             OnIncidentCreated?.Invoke(report);
             return report;
         }
 
-        /// <summary>Sağ alttaki telefona olay mesajı (İngilizce anahtar, seçili dilde yazılır).</summary>
-        private static void Feed(FeedTone tone, string key, string englishFormat, params object[] args)
+        /// <summary>
+        /// Sağ alttaki telefona olay mesajı (İngilizce anahtar, seçili dilde yazılır).
+        /// Sadece ekip sevk edilmiş vakalar: oyuncu dosyayı açmadan detay görmesin, sevk ettiği ekibin başından geçenleri kaçırmasın.
+        /// </summary>
+        private static void Feed(IncidentReport r, FeedTone tone, string key, string englishFormat, params object[] args)
         {
+            if (r.sentUnits.Count == 0) return;
             PhoneFeed.Post(Loc.F(englishFormat, args), tone, key);
         }
 
@@ -650,7 +652,7 @@ namespace ZeroHour.Phase2.Calls
                 if (r.injuredRemaining <= 0)
                 {
                     Debug.Log($"<color=red>[Incidents] ☠️ Case #{r.caseNumber}: kurtarılacak kimse kalmadı ({r.deaths} kayıp).</color>");
-                    Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: no survivors left · {1} lost", r.caseNumber, r.deaths);
+                    Feed(r, FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: no survivors left · {1} lost", r.caseNumber, r.deaths);
                     CloseIncident(r);
                     continue;
                 }
@@ -698,7 +700,7 @@ namespace ZeroHour.Phase2.Calls
                 r.injuredRemaining--;
                 r.deaths++;
                 if (CityStatsManager.Instance != null) CityStatsManager.Instance.RegisterCasualty(1);
-                Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: {1} lost so far, {2} still trapped", r.caseNumber, r.deaths, r.injuredRemaining);
+                Feed(r, FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: {1} lost so far, {2} still trapped", r.caseNumber, r.deaths, r.injuredRemaining);
             }
         }
 
@@ -712,7 +714,7 @@ namespace ZeroHour.Phase2.Calls
 
                 if (AStarMovementTester.Instance != null && unit.vehicle != null) AStarMovementTester.Instance.ReleaseVehicle(unit.vehicle);
                 r.onSiteUnits.RemoveAt(i);
-                Feed(FeedTone.Neutral, null, "Case #{0}: helicopter out of fuel, returning to base", r.caseNumber);
+                Feed(r, FeedTone.Neutral, null, "Case #{0}: helicopter out of fuel, returning to base", r.caseNumber);
             }
         }
 
@@ -721,7 +723,7 @@ namespace ZeroHour.Phase2.Calls
             if (r.isScam)
             {
                 Debug.Log($"<color=grey>[Incidents] Case #{r.caseNumber}: asılsız ihbar zaman aşımına uğradı (kayıp yok).</color>");
-                Feed(FeedTone.Neutral, null, "Case #{0}: report expired, nobody called back", r.caseNumber);
+                Feed(r, FeedTone.Neutral, null, "Case #{0}: report expired, nobody called back", r.caseNumber);
                 CloseIncident(r);
                 return;
             }
@@ -731,7 +733,7 @@ namespace ZeroHour.Phase2.Calls
             r.deaths += lost;
             if (CityStatsManager.Instance != null && lost > 0) CityStatsManager.Instance.RegisterCasualty(lost);
             Debug.Log($"<color=red>[Incidents] ⏱️ Case #{r.caseNumber}: süre doldu. Toplam {r.deaths} kayıp.</color>");
-            Feed(FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: time ran out · {1} lost", r.caseNumber, r.deaths);
+            Feed(r, FeedTone.Loss, "loss" + r.caseNumber, "Case #{0}: time ran out · {1} lost", r.caseNumber, r.deaths);
             CloseIncident(r);
         }
 
@@ -813,7 +815,6 @@ namespace ZeroHour.Phase2.Calls
             if (report.marker != null && report.onSiteUnits.Count == 0) report.marker.SetResponding();
 
             Debug.Log($"<color=cyan>[Incidents] 🚨 Case #{report.caseNumber}: {sent} birim sevk edildi.</color>");
-            Feed(FeedTone.Info, null, "Case #{0}: {1} unit(s) dispatched", report.caseNumber, sent);
             return sent;
         }
 
@@ -825,13 +826,11 @@ namespace ZeroHour.Phase2.Calls
             if (report.isScam)
             {
                 Debug.Log($"<color=grey>[Incidents] Case #{report.caseNumber}: asılsız ihbar reddedildi (doğru karar).</color>");
-                Feed(FeedTone.Neutral, null, "Case #{0} dismissed", report.caseNumber);
                 CloseIncident(report);
                 return;
             }
 
             if (CityStatsManager.Instance != null && report.injuredRemaining > 0) CityStatsManager.Instance.OnCallDismissed(report.injuredRemaining);
-            Feed(FeedTone.Loss, null, "Case #{0} dismissed · {1} lost", report.caseNumber, report.injuredRemaining);
             report.deaths += report.injuredRemaining;
             report.injuredRemaining = 0;
             CloseIncident(report);
@@ -859,7 +858,7 @@ namespace ZeroHour.Phase2.Calls
                     isHelicopter = type == UnitType.RescueHelicopter,
                     arrivedAtElapsed = r.elapsed
                 });
-                if (r.status == CallIncidentStatus.Responding) Feed(FeedTone.Info, null, "Case #{0}: first unit on scene", r.caseNumber);
+                if (r.status == CallIncidentStatus.Responding) Feed(r, FeedTone.Info, null, "Case #{0}: first unit on scene", r.caseNumber);
                 r.status = CallIncidentStatus.Working;
 
                 // Takip ihbarı ilk ekip varınca doğrulanır: gerçekse yağma görünür hale gelir
@@ -867,7 +866,7 @@ namespace ZeroHour.Phase2.Calls
                 {
                     r.effects = DisasterFx.Spawn(r);
                     ShowSiteLabel(r, "LOOTING CONFIRMED", new Color(1f, 0.55f, 0.2f));
-                    Feed(FeedTone.Alert, null, "Case #{0}: looting confirmed · {1} injured", r.caseNumber, r.injuredRemaining);
+                    Feed(r, FeedTone.Alert, null, "Case #{0}: looting confirmed · {1} injured", r.caseNumber, r.injuredRemaining);
                 }
                 return;
             }
@@ -882,7 +881,7 @@ namespace ZeroHour.Phase2.Calls
                 // Ekip boşuna gitti: kayıp yok ama o araçlar bu süre boyunca başka yerde çalışamadı
                 ShowSiteLabel(report, "FALSE ALARM", new Color(0.75f, 0.75f, 0.75f));
                 Debug.Log($"<color=grey>[Incidents] Case #{report.caseNumber}: ASILSIZ İHBAR. Ekip boşuna gitti.</color>");
-                Feed(FeedTone.Neutral, null, "Case #{0}: FALSE ALARM · units returning", report.caseNumber);
+                Feed(report, FeedTone.Neutral, null, "Case #{0}: FALSE ALARM · units returning", report.caseNumber);
                 CloseIncident(report);
                 return;
             }
@@ -893,7 +892,7 @@ namespace ZeroHour.Phase2.Calls
                 // Doğru ekip, süre bitmeden: hayatta kalan yaralıların hepsi kurtarıldı
                 if (stats != null) stats.ResolveCiviliansAtRisk(remaining);
                 Debug.Log($"<color=green>[Incidents] ✅ Case #{report.caseNumber} çözüldü. {remaining} sivil kurtarıldı, {report.deaths} kayıp.</color>");
-                Feed(FeedTone.Success, null, "Case #{0} resolved · {1} rescued, {2} lost", report.caseNumber, remaining, report.deaths);
+                Feed(report, FeedTone.Success, null, "Case #{0} resolved · {1} rescued, {2} lost", report.caseNumber, remaining, report.deaths);
             }
             else
             {
@@ -906,7 +905,7 @@ namespace ZeroHour.Phase2.Calls
                     stats.ResolveCiviliansAtRisk(remaining - lost);
                 }
                 Debug.Log($"<color=orange>[Incidents] ⚠️ Case #{report.caseNumber}: gerekli ekip ({report.RequiredUnit}) gelmedi. {lost} sivil daha kaybedildi.</color>");
-                Feed(FeedTone.Loss, null, "Case #{0}: wrong team, no {1} sent · {2} more lost", report.caseNumber, UnitName(report.RequiredUnit), lost);
+                Feed(report, FeedTone.Loss, null, "Case #{0}: wrong team, no {1} sent · {2} more lost", report.caseNumber, UnitName(report.RequiredUnit), lost);
             }
             report.injuredRemaining = 0;
 

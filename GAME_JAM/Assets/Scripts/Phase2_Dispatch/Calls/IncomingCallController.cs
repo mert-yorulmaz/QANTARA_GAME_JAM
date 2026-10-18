@@ -104,7 +104,7 @@ namespace ZeroHour.Phase2.Calls
                     if (timer >= ringTimeout)
                     {
                         Debug.Log("<color=orange>[Calls] 📵 Çağrı cevapsız kaldı.</color>");
-                        PenalizeAndEnd("Missed call · {0} people left without help");
+                        DeclineCall();
                     }
                     break;
 
@@ -165,13 +165,8 @@ namespace ZeroHour.Phase2.Calls
         public void DeclineCall()
         {
             if (state != CallState.Ringing) return;
-            PenalizeAndEnd("Call declined · {0} people left without help");
-        }
 
-        private void PenalizeAndEnd(string feedFormat)
-        {
             if (CityStatsManager.Instance != null) CityStatsManager.Instance.OnCallDismissed(declinePenalty);
-            PhoneFeed.Post(Loc.F(feedFormat, declinePenalty), FeedTone.Loss);
             EndCall();
         }
 

@@ -544,3 +544,16 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 ## ⚠️ Bilinmesi Gerekenler
 - Elle test edilmesi gerekenler: gerçek fare tıklaması, sesler (yeni deprem sesi + telefon bip'i dahil).
 - `UnityConnectSettings.asset` hâlâ commit'lenmedi (karar sizde).
+
+---
+
+# 🔄 GÜNCELLEME 9.1 — 18 Ekim 2026 (Claude Code)
+
+> ## ⚠️ BU SATIRDAN İTİBAREN YAZILANLAR "GÜNCELLEME 9.1"DİR "CLAUDE"
+> Üstteki hiçbir satır silinmedi. `claude/faz2-ui` branch'inde commit'lendi, `main`'e birleştirilmedi ve push edilmedi.
+> Kullanıcı isteği: çağrı açılıp rozete tıklanmadan detaylar görünmesin; telefon, sevk edilen ekiplerin başından geçenleri kaçırmamak için. Her log gerekmez.
+
+## ✅ Yapılanlar
+- Telefon artık **sadece ekip sevk edilmiş vakaların** gelişmelerini yazıyor: ilk ekip olay yerinde, yağma doğrulandı, asılsız ihbar, helikopterin yakıtı bitti, kayıplar (aynı balonda güncellenir), çözüldü (kurtarılan / kayıp), yanlış ekip, süre doldu.
+- Kaldırılan mesajlar: yeni vaka (yaralı sayısı dosyayı açmadan görünüyordu), takip ihbarı geldi, sevk edildi, vaka kapatıldı, reddedilen / cevapsız çağrı. Bunları oyuncu zaten kendisi yapıyor ya da dosyayı açınca görmeli.
+- *Test:* 3 vaka (biri sevk edildi): sevk edilmeyen iki vakada kayıplar oldu ama telefona yazılmadı; sevk edilen vaka için yalnızca "ilk ekip olay yerinde" ve "çözüldü · 4 kurtarıldı, 0 kayıp" geldi. Konsolda hata yok.

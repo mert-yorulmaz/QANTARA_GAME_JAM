@@ -129,9 +129,6 @@ namespace ZeroHour.Phase2.Calls
 
             // Telefon mesajları (sağ alt)
             { "MESSAGES", "MESAJLAR" },
-            { "New case #{0}: {1} · {2} injured", "Yeni vaka #{0}: {1} · {2} yaralı" },
-            { "Case #{0}: looting reported near case #{1} (unverified)", "Vaka #{0}: #{1} yakınında yağma ihbarı (doğrulanmamış)" },
-            { "Case #{0}: {1} unit(s) dispatched", "Vaka #{0}: {1} birim sevk edildi" },
             { "Case #{0}: first unit on scene", "Vaka #{0}: ilk ekip olay yerinde" },
             { "Case #{0}: looting confirmed · {1} injured", "Vaka #{0}: yağma doğrulandı · {1} yaralı" },
             { "Case #{0}: {1} lost so far, {2} still trapped", "Vaka #{0}: şu ana kadar {1} kayıp, {2} kişi hâlâ mahsur" },
@@ -139,13 +136,9 @@ namespace ZeroHour.Phase2.Calls
             { "Case #{0}: helicopter out of fuel, returning to base", "Vaka #{0}: helikopterin yakıtı bitti, üsse dönüyor" },
             { "Case #{0}: report expired, nobody called back", "Vaka #{0}: ihbar düştü, kimse geri aramadı" },
             { "Case #{0}: time ran out · {1} lost", "Vaka #{0}: süre doldu · {1} kayıp" },
-            { "Case #{0} dismissed", "Vaka #{0} kapatıldı" },
-            { "Case #{0} dismissed · {1} lost", "Vaka #{0} kapatıldı · {1} kayıp" },
             { "Case #{0}: FALSE ALARM · units returning", "Vaka #{0}: ASILSIZ İHBAR · ekip dönüyor" },
             { "Case #{0} resolved · {1} rescued, {2} lost", "Vaka #{0} çözüldü · {1} kurtarıldı, {2} kayıp" },
             { "Case #{0}: wrong team, no {1} sent · {2} more lost", "Vaka #{0}: yanlış ekip, {1} gitmedi · {2} kayıp daha" },
-            { "Call declined · {0} people left without help", "Çağrı reddedildi · {0} kişi yardımsız kaldı" },
-            { "Missed call · {0} people left without help", "Cevapsız çağrı · {0} kişi yardımsız kaldı" },
 
             // Ayarlar
             { "SETTINGS", "AYARLAR" },
