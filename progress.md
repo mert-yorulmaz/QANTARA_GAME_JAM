@@ -786,3 +786,5 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 ## 🧪 Test (Play, Türkçe)
 - Tırmanma, oturma alanı + "[E] Otur", saat duraklaması, Case Files düğmeleri, memo, iki görev kutusu ekran görüntüsü, 3. dosyada 08:29 → 17:00 + NIGHT CREW açıldı. Hata yok.
 - Elle denenmeli: gerçek E / ESC tuşları (masada ESC → ayarlar, E → kalk), masaya bakıp E ile oturma.
+
+> **Güncelleme 14 — gönderim:** `github.com/mert-yorulmaz/GAME_JAM` `main` → **`0860ad6`** (`74e4ffb` üstüne normal ileri sarma; içerik `4ffd0e7` ile birebir aynı).
