@@ -760,3 +760,5 @@ Gerçek fare tıklaması, çağrı sesleri ve normal Play'de `JobTempAlloc` uyar
 - Faz 2 artık oyuncunun aldığı ekiple oynanıyor; en az ekiple (4 araç) zorluk artar. Fiyatlar / ücretsiz ekip `FleetShop` bileşeninde (Inspector) kolayca değiştirilebilir.
 - Ana menüdeki "11 ready" yazısı en kalabalık ekibi gösteriyor; tur başında henüz ekip yok.
 - Faz 1 metinleri (satın alma dahil) İngilizce; Faz 1'de çeviri sistemi yok.
+
+> **Güncelleme 13 — gönderim:** Aynı içerik `github.com/mert-yorulmaz/GAME_JAM` `main`'e **`74e4ffb`** olarak gönderildi (`2ac2774` üstüne normal ileri sarma, force yok; gönderilen dosyalar bu repodaki `c557fa2` ile birebir aynı).
