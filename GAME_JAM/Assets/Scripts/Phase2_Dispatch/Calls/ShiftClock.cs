@@ -30,10 +30,13 @@ namespace ZeroHour.Phase2.Calls
         [SerializeField] private GameObject debriefRoot;
         [SerializeField] private TMP_Text debriefStatsText;
         [SerializeField] private TMP_Text debriefGradeText;
+        [Tooltip("Karnedeki ana düğme: ofise dönüp kanepeye yatmaya gider (kapanış)")]
         [SerializeField] private Button playAgainButton;
         [SerializeField] private Button mainMenuButton;
         [Tooltip("ANA MENÜ düğmesinin açtığı sahne")]
         [SerializeField] private string mainMenuScene = "MainMenu";
+        [Tooltip("Vardiya bitince dönülen ofis sahnesi (Faz 1); oyuncu kanepeye yatar, jenerik gelir")]
+        [SerializeField] private string officeScene = "Phase1_Office";
 
         private static readonly Color NormalColor = new Color(0.47f, 0.88f, 0.69f);
         private static readonly Color WarningColor = new Color(1f, 0.36f, 0.30f);
@@ -51,7 +54,7 @@ namespace ZeroHour.Phase2.Calls
             // Faz 1 (birinci şahıs ofis) imleci kilitleyip gizler; gece vardiyası fareyle oynanır
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            if (playAgainButton != null) playAgainButton.onClick.AddListener(PlayAgain);
+            if (playAgainButton != null) playAgainButton.onClick.AddListener(GoToSleep);
             if (mainMenuButton != null) mainMenuButton.onClick.AddListener(GoToMainMenu);
         }
 
@@ -125,6 +128,7 @@ namespace ZeroHour.Phase2.Calls
             }
 
             if (debriefGradeText != null) debriefGradeText.text = Grade(rate);
+            ShowGoToSleep();
             if (debriefRoot != null) debriefRoot.SetActive(true);
         }
 
@@ -137,10 +141,47 @@ namespace ZeroHour.Phase2.Calls
             return "F";
         }
 
-        private void PlayAgain()
+        // Tekrar oynama yok: karnenin altında "mesain bitti" mesajı, düğme ofise dönüp uyumaya gönderir
+        private void ShowGoToSleep()
+        {
+            if (playAgainButton == null) return;
+
+            TMP_Text label = playAgainButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                // Sahnedeki LocalizedText etiketi eski "PLAY AGAIN" yazısına geri çevirmesin
+                LocalizedText localized = label.GetComponent<LocalizedText>();
+                if (localized != null) localized.enabled = false;
+                label.text = Loc.T("GO TO SLEEP");
+            }
+
+            RectTransform panel = playAgainButton.transform.parent as RectTransform;
+            if (panel == null || panel.Find("ShiftOverMessage") != null) return;
+
+            GameObject go = new GameObject("ShiftOverMessage", typeof(RectTransform));
+            go.transform.SetParent(panel, false);
+            RectTransform rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(42f, -500f);
+            rt.sizeDelta = new Vector2(1036f, 80f);
+
+            TextMeshProUGUI message = go.AddComponent<TextMeshProUGUI>();
+            if (debriefStatsText != null) message.font = debriefStatsText.font;
+            message.text = Loc.T("Your shift is over. Go get some sleep.");
+            message.fontSize = 34f;
+            message.enableAutoSizing = true;
+            message.fontSizeMin = 20f;
+            message.fontSizeMax = 34f;
+            message.color = new Color(0.47f, 0.88f, 0.69f);
+            message.alignment = TextAlignmentOptions.Left;
+            message.raycastTarget = false;
+        }
+
+        private void GoToSleep()
         {
             Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            ZeroHour.Shared.GameEnding.Pending = true;
+            SceneManager.LoadScene(officeScene);
         }
 
         private void GoToMainMenu()

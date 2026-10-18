@@ -180,6 +180,14 @@ namespace ZeroHour.Phase2.Calls
             { "Buy your night crew on the computer first", "Önce bilgisayardan gece ekibini satın al" },
             { "Crisis desk opens when your files are done", "Kriz masası dosyaların bitince açılır" },
 
+            // Oyun sonu: karne → ofis → kanepe → jenerik
+            { "GO TO SLEEP", "UYUMAYA GİT" },
+            { "Your shift is over. Go get some sleep.", "Mesain bitti. Git biraz uyu." },
+            { "Your shift is over. Lie down on the couch and get some sleep.", "Mesain bitti. Kanepeye uzan ve biraz uyu." },
+            { "[E] Sleep", "[E] Uyu" },
+            { "THANKS FOR PLAYING", "OYNADIĞIN İÇİN TEŞEKKÜRLER" },
+            { "Developed by", "Geliştiren" },
+
             // Ana menü (oyunun adı SIGN çevrilmez)
             { "DISASTER CONTROL LINE", "AFET KONTROL HATTI" },
             { "LIVE", "CANLI" },

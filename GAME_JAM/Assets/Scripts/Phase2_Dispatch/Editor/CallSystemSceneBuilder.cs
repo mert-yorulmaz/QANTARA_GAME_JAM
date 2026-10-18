@@ -1400,7 +1400,7 @@ namespace ZeroHour.Phase2.Editor
             Place(againBg.rectTransform, 718, 620, 1078, 708);
             Button again = againBg.gameObject.AddComponent<Button>();
             again.targetGraphic = againBg;
-            NewText("Label", againBg.transform, "PLAY AGAIN", pixelFont, 40, AcceptInk, 0, 0, 360, 88, TextAlignmentOptions.Center);
+            NewText("Label", againBg.transform, "GO TO SLEEP", pixelFont, 40, AcceptInk, 0, 0, 360, 88, TextAlignmentOptions.Center);
 
             // Ana menüye dönüş: vardiya HUD'ındaki dişli gibi koyu çerçeveli panel düğmesi
             Image menuBg = NewImage("MainMenuButton", rt, null, HudPanelColor);

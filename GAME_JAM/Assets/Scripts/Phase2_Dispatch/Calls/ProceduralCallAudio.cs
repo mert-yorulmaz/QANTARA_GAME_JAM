@@ -71,7 +71,7 @@ namespace ZeroHour.Phase2.Calls
                 float voice = Mathf.Sin(phase) + 0.5f * Mathf.Sin(2f * phase) + 0.3f * Mathf.Sin(3f * phase) + 0.15f * Mathf.Sin(5f * phase);
 
                 // Boğuk telsiz: alçak geçiren filtre
-                lowpass += (voice - lowpass) * 0.08f;
+                lowpass += (voice - lowpass) * 0.12f;
 
                 // Telsiz hışırtısı
                 float white = (float)rng.NextDouble() * 2f - 1f;
@@ -80,6 +80,12 @@ namespace ZeroHour.Phase2.Calls
                 float fade = Mathf.Clamp01(t / 0.05f) * Mathf.Clamp01((duration - t) / 0.08f);
                 data[i] = (lowpass * syllableEnv * 0.32f + noiseLowpass * 0.05f) * fade;
             }
+
+            // Telefonda az duyuluyordu: tepe seviyesi 0.9'a çekilir
+            float peak = 0.0001f;
+            for (int i = 0; i < length; i++) peak = Mathf.Max(peak, Mathf.Abs(data[i]));
+            float gain = 0.9f / peak;
+            for (int i = 0; i < length; i++) data[i] *= gain;
 
             AudioClip clip = AudioClip.Create("Procedural_RadioMumble", length, 1, SampleRate, false);
             clip.SetData(data, 0);
@@ -239,6 +245,67 @@ namespace ZeroHour.Phase2.Calls
                 data[i] = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * freq * t)) * 0.12f * env;
             }
             AudioClip clip = AudioClip.Create("Procedural_ShopAlarm", length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+            // ==========================================
+        // ARAÇ SESLERİ (döngülü; bir kez üretilir)
+        // ==========================================
+
+        private static AudioClip ambulanceSiren, policeSiren, fireSiren, helicopterRotor;
+
+        /// <summary>Ambulans: yavaş inip çıkan uzun siren (4 sn).</summary>
+        public static AudioClip AmbulanceSiren => ambulanceSiren != null ? ambulanceSiren : (ambulanceSiren = CreateSirenClip("Procedural_AmbulanceSiren", 4f, 0.2f,
+            t => 650f + 700f * (0.5f - 0.5f * Mathf.Cos(2f * Mathf.PI * t / 4f))));
+
+        /// <summary>Polis: hızlı yükselip düşen siren.</summary>
+        public static AudioClip PoliceSiren => policeSiren != null ? policeSiren : (policeSiren = CreateSirenClip("Procedural_PoliceSiren", 3.2f, 0.18f,
+            t => 750f + 750f * Mathf.PingPong(t / 0.16f, 1f)));
+
+        /// <summary>İtfaiye: iki tonlu "dat-dit" (2.4 sn).</summary>
+        public static AudioClip FireSiren => fireSiren != null ? fireSiren : (fireSiren = CreateSirenClip("Procedural_FireSiren", 2.4f, 0.2f,
+            t => Mathf.Repeat(t, 1.2f) < 0.6f ? 580f : 435f));
+
+        /// <summary>Helikopter: pervane vuruşu + türbin uğultusu (2 sn).</summary>
+        public static AudioClip HelicopterRotor => helicopterRotor != null ? helicopterRotor : (helicopterRotor = CreateRotorClip());
+
+        private static AudioClip CreateSirenClip(string name, float duration, float volume, System.Func<float, float> frequencyAt)
+        {
+            int length = Mathf.CeilToInt(SampleRate * duration);
+            float[] data = new float[length];
+            float phase = 0f;
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                phase += 2f * Mathf.PI * frequencyAt(t) / SampleRate;
+                float tone = Mathf.Sin(phase) + 0.35f * Mathf.Sin(2f * phase) + 0.2f * Mathf.Sin(3f * phase);
+                // Döngü dikişinde tık olmasın
+                float edge = Mathf.Clamp01(t / 0.01f) * Mathf.Clamp01((duration - t) / 0.01f);
+                data[i] = tone * volume * edge;
+            }
+            AudioClip clip = AudioClip.Create(name, length, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateRotorClip()
+        {
+            const float Duration = 2f;
+            const float BladeRate = 17f; // 2 sn'de tam 34 vuruş: döngü dikişsiz
+            int length = Mathf.CeilToInt(SampleRate * Duration);
+            float[] data = new float[length];
+            System.Random rng = new System.Random(71);
+            float noise = 0f;
+            for (int i = 0; i < length; i++)
+            {
+                float t = (float)i / SampleRate;
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                noise += (white - noise) * 0.06f;
+                float thump = Mathf.Pow(0.5f + 0.5f * Mathf.Cos(2f * Mathf.PI * BladeRate * t), 6f);
+                float whine = Mathf.Sin(2f * Mathf.PI * 880f * t) * 0.04f;
+                data[i] = Mathf.Clamp(noise * 3.2f * (0.25f + thump) + whine, -1f, 1f) * 0.5f;
+            }
+            AudioClip clip = AudioClip.Create("Procedural_HelicopterRotor", length, 1, SampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

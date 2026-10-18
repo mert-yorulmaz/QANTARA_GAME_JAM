@@ -378,6 +378,10 @@ namespace ZeroHour.Phase2.Units
                     lightBar = v.AddComponent<EmergencyLightBar>();
                     lightBar.Initialize(this, state.isHelicopter);
                 }
+
+                // Görevdeyken siren / pervane sesi
+                if (v.GetComponent<UnitAudio>() == null)
+                    v.AddComponent<UnitAudio>().Initialize(this, state.unitType);
             }
 
             Debug.Log($"<color=cyan>[A* Tester] 4 ana araç teste bağlandı ({vehicleStates.Count} araç): Kazasız Konvoy Radarı ve Asfalt Cadde Park Sistemi aktif edildi.</color>");
